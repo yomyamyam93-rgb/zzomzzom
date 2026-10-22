@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#fff;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111}
-#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
 .overlay{position:fixed;inset:0;background:rgba(255,255,255,.93);display:none;justify-content:center;align-items:flex-start;overflow:auto;z-index:10}
 .overlay.show{display:flex}
 .box{max-width:980px;width:100%;padding:28px 16px;text-align:center}
@@ -605,9 +605,12 @@ function angDiff(a, b) { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; wh
 function update(dt) {
   // 내 조작: 마우스 방향으로 이동
   if (me && me.alive) {
-    const [wx, wy] = screenToWorld(mouse.x, mouse.y);
-    me.moving = d2(wx, wy, me.x, me.y) > (me.r * 0.6) ** 2;
-    me.tgt = Math.atan2(wy - me.y, wx - me.x);
+    if (touch.dir != null) { me.tgt = touch.dir; me.moving = true; } // 손가락 조이스틱
+    else {
+      const [wx, wy] = screenToWorld(mouse.x, mouse.y);
+      me.moving = d2(wx, wy, me.x, me.y) > (me.r * 0.6) ** 2;
+      me.tgt = Math.atan2(wy - me.y, wx - me.x);
+    }
   }
   for (const e of ents) {
     if (!e.alive) continue;
@@ -856,7 +859,7 @@ function render() {
   }
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   for (const ob of orbs) if (vis(ob.x, ob.y, 10)) { ctx.beginPath(); ctx.arc(ob.x, ob.y, ob.r, 0, 6.29); ctx.fillStyle = ob.c; ctx.fill(); }
-  const live = ents.filter(e => e.alive && vis(e.x, e.y, e.r * 3 + e.weapon.len * weaponScale(e))).sort((a, b) => b.r - a.r);
+  const live = ents.filter(e => e.alive && vis(e.x, e.y, e.r * 3 + e.weapon.len * weaponScale(e))).sort((a, b) => (a.y + a.r) - (b.y + b.r)); // 아래쪽이 앞에
   let king = null; for (const e of ents) if (e.alive && (!king || e.mass > king.mass)) king = e;
   for (const e of live) drawEnt(e);
   if (king && king.mass > 20 && live.includes(king)) drawCrown(king);
@@ -865,6 +868,11 @@ function render() {
   ctx.globalAlpha = 1;
   // 화면 글자
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (touch.id !== null) { // 손가락 조이스틱: 기준점 고리 + 손가락 위치 점
+    ctx.beginPath(); ctx.arc(touch.sx, touch.sy, 34, 0, 6.29); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 3; ctx.stroke();
+    const dx = touch.cx - touch.sx, dy = touch.cy - touch.sy, l = Math.hypot(dx, dy), k = l > 34 ? 34 / l : 1;
+    ctx.beginPath(); ctx.arc(touch.sx + dx * k, touch.sy + dy * k, 14, 0, 6.29); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fill();
+  }
   const top = ents.filter(e => e.alive).sort((a, b) => b.mass - a.mass).slice(0, 10);
   ctx.textAlign = 'left'; ctx.font = "bold 15px 'Malgun Gothic',sans-serif"; ctx.fillStyle = '#eee';
   ctx.fillText('순위', VW - 190, 28);
@@ -892,7 +900,34 @@ function loop(t) {
   update(dt); render();
   requestAnimationFrame(loop);
 }
-cv.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+cv.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; touch.dir = null; });
+// 손가락: 처음 댄 자리가 기준점. 거기서 끈 방향으로 움직임. 다른 손가락으로 톡 치면 대시. 짧게 톡만 쳐도 대시.
+const touch = { id: null, sx: 0, sy: 0, cx: 0, cy: 0, dir: null, t0: 0, moved: false };
+const TOUCH_DEAD = 8;    // 이 거리(px) 이상 끌어야 방향으로 인정
+cv.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (touch.id === null) { touch.id = t.identifier; touch.sx = touch.cx = t.clientX; touch.sy = touch.cy = t.clientY; touch.t0 = performance.now(); touch.moved = false; }
+    else if (me && me.alive) me.boost = true; // 두 번째 손가락 = 대시
+  }
+}, { passive: false });
+cv.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) if (t.identifier === touch.id) {
+    touch.cx = t.clientX; touch.cy = t.clientY;
+    const dx = touch.cx - touch.sx, dy = touch.cy - touch.sy;
+    if (Math.hypot(dx, dy) >= TOUCH_DEAD) { touch.dir = Math.atan2(dy, dx); touch.moved = true; }
+  }
+}, { passive: false });
+const touchEnd = e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) if (t.identifier === touch.id) {
+    if (!touch.moved && performance.now() - touch.t0 < 250 && me && me.alive) me.boost = true; // 짧게 톡 = 대시
+    touch.id = null; // 손을 떼도 마지막 방향으로 계속 감
+  }
+};
+cv.addEventListener('touchend', touchEnd, { passive: false });
+cv.addEventListener('touchcancel', touchEnd, { passive: false });
 // 왼쪽 클릭을 누르고 있으면 대시
 cv.addEventListener('mousedown', e => { if (e.button === 0 && me && me.alive) me.boost = true; });
 // 오른쪽 클릭 메뉴 막기
