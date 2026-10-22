@@ -251,6 +251,7 @@ function prepChar(cb) {
       if (xx > 0) st2.push(i - 1); if (xx < cw - 1) st2.push(i + 1); if (yy > 0) st2.push(i - cw); if (yy < ch - 1) st2.push(i + cw); }
     for (let i = 0; i < cw * ch; i++) if (!out[i] && q[i * 4 + 3] === 0) { q[i * 4] = q[i * 4 + 1] = q[i * 4 + 2] = q[i * 4 + 3] = 255; }
     cx.putImageData(cd, 0, 0);
+    try { $('menuChar').src = cc.toDataURL(); } catch (e) {}
     cb();
   };
   im.onerror = () => cb();
@@ -930,6 +931,7 @@ function render() {
   ctx.globalAlpha = 1;
   // 화면 글자
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (!SIM && document.querySelector('.overlay.show')) { ctx.shadowBlur = 0; return; } // 메뉴가 떠 있으면 화면 글자 생략
   if (touch.id !== null) { // 손가락 조이스틱: 기준점 고리 + 손가락 위치 점
     ctx.beginPath(); ctx.arc(touch.sx, touch.sy, 34, 0, 6.29); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 3; ctx.stroke();
     const dx = touch.cx - touch.sx, dy = touch.cy - touch.sy, l = Math.hypot(dx, dy), k = l > 34 ? 34 / l : 1;
