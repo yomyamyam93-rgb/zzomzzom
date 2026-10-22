@@ -137,6 +137,7 @@ const BASE_CD = 1.0;       // 처음 크기의 기본 공격 간격(초)
 const BASE_RANGE = 80;     // 처음 크기의 기본 공격 범위 (무기가 보이는 크기도 이에 비례)
 const DRAW_W = 0.4;        // 무게가 주는 영향: 무거우면 공격력 최대 +40%, 공격 간격 최대 +40% (가벼우면 반대)
 const DRAW_L = 0.3;        // 길이가 주는 영향: 길면 범위 최대 +30%, 짧으면 -30%
+const ARC_MIN = 60, ARC_MAX = 120; // 휘두르는 폭(도): 가늘면 60도, 넓적하면 120도. 넓을수록 한 방은 약해짐
 // 구슬 한 개당 효과
 // 구슬 한 개당 효과. 상한 없이 계속 올라감
 const ATK_PER = 0.015;     // 빨강 1개 = 공격력 +1.5%
@@ -159,7 +160,6 @@ const GLOW_MAX = 22;       // 기를 다 모았을 때 무기 빛 크기
 const SWING_SLOW = 1;       // 휘두르는 동안 이동 속도 배율 (1 = 안 느려짐)
 const HIT_KNOCK = 0;        // 맞았을 때 튕겨 나가는 힘 (0 = 안 날아감)
 const HIT_DASH = 1.6, HIT_DASH_TIME = 0.6; // 맞은 직후 잠깐 빨라지는 배율과 시간
-const SWING_HALF = Math.PI / 4; // 휘두르는 폭의 절반 (45도 → 전체 90도)
 const REST_FOLLOW = 9;         // 휘두른 뒤 대기 위치로 돌아오는 빠르기
 const WINDUP = 0.16, SWING = 0.1, RECOVER = 0.2; // 공격 동작: 뒤로 젖힘 → 휙 → 제자리
 const REPORT_LIMIT = 5;   // 목록에서 내려가는 신고 수 (서버 붙으면 사용)
@@ -348,8 +348,10 @@ function analyze(cv) {
 function statsOf(area, len) {
   // 무게: 0 = 선 하나 정도, 1 = 칼날을 꽉 채운 큰 무기 / 길이: 0 = 아주 짧음, 1 = 그림판 끝까지
   const wn = clamp((area - 1000) / 9000, 0, 1), ln = clamp((len - 60) / 220, 0, 1);
+  const tn = clamp((area / Math.max(1, len) - 12) / 50, 0, 1); // 두께: 길이 대비 넓이
+  const arc = ARC_MIN + (ARC_MAX - ARC_MIN) * tn, arcMul = Math.sqrt(90 / arc); // 넓게 쓸수록 힘이 분산
   const k = (v, d) => 1 - d + 2 * d * v; // v=0 → (1-d)배, v=1 → (1+d)배
-  return { dmg: BASE_DMG * k(wn, DRAW_W), cd: BASE_CD * k(wn, DRAW_W), anim: 0.75 + 0.5 * wn, rangeMul: k(ln, DRAW_L), wn, len };
+  return { dmg: BASE_DMG * k(wn, DRAW_W) * arcMul, cd: BASE_CD * k(wn, DRAW_W), anim: 0.75 + 0.5 * wn, rangeMul: k(ln, DRAW_L), half: arc / 2 * Math.PI / 180, arc, wn, ln, tn, len };
 }
 function makeWeapon(cv, hand, name, user) {
   const a = analyze(cv); if (!a) return null;
@@ -360,12 +362,12 @@ function makeWeapon(cv, hand, name, user) {
   return {
     id: 'w' + Date.now().toString(36) + (uid++), name, cv, hand,
     tip: { x: tip[0], y: tip[1] }, baseAng: Math.atan2(tip[1] - hand.y, tip[0] - hand.x),
-    area: a.area, len: a.len, rangeMul: s.rangeMul, dmg: s.dmg, cd: s.cd, anim: s.anim, wn: s.wn, created: Date.now(), uses: 0, user: !!user
+    area: a.area, len: a.len, rangeMul: s.rangeMul, half: s.half, arc: s.arc, wn: s.wn, ln: s.ln, tn: s.tn, dmg: s.dmg, cd: s.cd, anim: s.anim, wn: s.wn, created: Date.now(), uses: 0, user: !!user
   };
 }
 function statText(w) {
   const p = v => (v >= 1 ? '+' : '') + Math.round((v - 1) * 100) + '%';
-  return `공격력 ${p(w.dmg / BASE_DMG)} · 공격 간격 ${p(w.cd / BASE_CD)} · 범위 ${p(w.rangeMul)} (기본 대비)`;
+  return `공격력 ${p(w.dmg / BASE_DMG)} · 공격 간격 ${p(w.cd / BASE_CD)} · 범위 ${p(w.rangeMul)} · 휘두르는 폭 ${Math.round(w.arc)}° (기본 대비)`;
 }
 
 // 기본 무기 (손그림 느낌으로 자동 생성)
@@ -513,7 +515,7 @@ const ease = t => t * t * (3 - 2 * t);
 function weaponAng(e) {
   const t = e.swingT;
   if (t < 0) return e.ang + (e.restOff == null ? -SWING_HALF * 0.7 : e.restOff);
-  const sd = e.swingDir, idle = e.ang + (e.swingFrom == null ? -sd * SWING_HALF * 0.7 : e.swingFrom), back = e.ang - sd * SWING_HALF, end = e.ang + sd * SWING_HALF;
+  const sd = e.swingDir, idle = e.ang + (e.swingFrom == null ? -sd * SWING_HALF * 0.7 : e.swingFrom), back = e.ang - sd * e.weapon.half, end = e.ang + sd * e.weapon.half;
   if (t < WINDUP) return idle + (back - idle) * ease(t / WINDUP);
   if (t < WINDUP + SWING) { const u = (t - WINDUP) / SWING; return back + (end - back) * u * u; }
   const u = Math.min(1, (t - WINDUP - SWING) / RECOVER);
@@ -533,6 +535,8 @@ function initWorld() {
 // ===== 전투 =====
 function startSwing(e) { e.swingDir = Math.cos(e.ang) >= 0 ? 1 : -1; e.swingFrom = e.restOff == null ? -e.swingDir * SWING_HALF * 0.7 : e.restOff; e.swingT = 0; e.hitSet = new Set(); e.cdT = cdOf(e); e.fxDone = false; e.prevA = null; }
 let fx = [];
+const killLog = []; // [이긴 무기 무게,길이,두께,먹은양, 진 무기 무게,길이,두께,먹은양, 사람여부]
+setInterval(() => { if (killLog.length) { logEvent('kills', { k: killLog.splice(0, 300) }); } }, 30000);
 function doHits(e) {
   const A1 = weaponAng(e), A0 = e.prevA == null ? A1 : e.prevA; e.prevA = A1;
   const [hx, hy] = handPos(e), reach = e.weapon.len * weaponScale(e);
@@ -572,6 +576,10 @@ function kill(o, killer) {
   }
   for (let i = 0; i < 18; i++) parts.push({ x: o.x, y: o.y, vx: rand(-1, 1) * 260, vy: rand(-1, 1) * 260, t: 0.6, c: KIND_COLOR[pick(KINDS)], s: rand(3, 7) * scaleOf(o) });
   if (killer) killer.kills++;
+  if (killer && canLog) {
+    const wk = killer.weapon, wv = o.weapon;
+    killLog.push([+wk.wn.toFixed(2), +wk.ln.toFixed(2), +wk.tn.toFixed(2), Math.round(killer.mass), +wv.wn.toFixed(2), +wv.ln.toFixed(2), +wv.tn.toFixed(2), Math.round(o.mass), killer === me ? 1 : o === me ? 2 : 0]);
+  }
   if (track) {
     if (killer === me) track.victims.push(o.weapon);
     if (o === me) { track.killer = killer ? killer.weapon : null; track.killerName = killer ? killer.name : ''; }
@@ -656,7 +664,7 @@ function update(dt) {
       e.swingT += dt / (e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7)); // 무거운 무기·큰 몸은 동작도 느림
       if (e.swingT >= WINDUP && !e.fxDone) {
         e.fxDone = true; e.prevA = null;
-        fx.push({ type: 'sw', e, a0: e.ang - e.swingDir * SWING_HALF, a1: e.ang + e.swingDir * SWING_HALF, t: 0, T: 0.34, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
+        fx.push({ type: 'sw', e, a0: e.ang - e.swingDir * e.weapon.half, a1: e.ang + e.swingDir * e.weapon.half, t: 0, T: 0.34, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
       }
       if (e.swingT >= WINDUP && e.swingT < WINDUP + SWING + 0.03) doHits(e);
       if (e.swingT >= WINDUP + SWING + RECOVER) { e.swingT = -1; e.restOff = e.swingDir * SWING_HALF * 0.7; } // 아래쪽에서 시작해 대기 위치로 돌아감
@@ -838,7 +846,7 @@ function drawEnt(e) {
   if (e === me && me.alive) {
     // 공격 방향 화살표: 몸 앞에서 무기가 닿는 끝까지. 기가 찰수록 또렷해짐
     const reach = e.r * 0.5 + e.weapon.len * weaponScale(e), c = chargeOf(e), ax = Math.cos(e.ang), ay = Math.sin(e.ang);
-    const x0 = e.x + ax * e.r * 1.15, y0 = e.y + ay * e.r * 1.15, x1 = e.x + ax * reach, y1 = e.y + ay * reach, hd = Math.max(8 / cam.z, e.r * 0.3);
+    const x0 = e.x + ax * (e.r * 0.5 + (reach - e.r * 0.5) * 0.55), y0 = e.y + ay * (e.r * 0.5 + (reach - e.r * 0.5) * 0.55), x1 = e.x + ax * (reach + e.r * 0.35), y1 = e.y + ay * (reach + e.r * 0.35), hd = Math.max(8 / cam.z, e.r * 0.3);
     ctx.globalAlpha = 0.25 + 0.55 * c; ctx.strokeStyle = '#fff'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(2 / cam.z, e.r * 0.06);
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - ax * hd - ay * hd * 0.6, y1 - ay * hd + ax * hd * 0.6); ctx.moveTo(x1, y1); ctx.lineTo(x1 - ax * hd + ay * hd * 0.6, y1 - ay * hd - ax * hd * 0.6); ctx.stroke();
