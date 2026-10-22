@@ -514,12 +514,12 @@ const ease = t => t * t * (3 - 2 * t);
 // 좌우로 방향을 바꿀 때도 대기 위치가 순간이동하지 않고 반대쪽으로 스르륵 넘어감.
 function weaponAng(e) {
   const t = e.swingT;
-  if (t < 0) return e.ang + (e.restOff == null ? -SWING_HALF * 0.7 : e.restOff);
-  const sd = e.swingDir, idle = e.ang + (e.swingFrom == null ? -sd * SWING_HALF * 0.7 : e.swingFrom), back = e.ang - sd * e.weapon.half, end = e.ang + sd * e.weapon.half;
+  if (t < 0) return e.ang + (e.restOff == null ? -e.weapon.half * 0.7 : e.restOff);
+  const sd = e.swingDir, idle = e.ang + (e.swingFrom == null ? -sd * e.weapon.half * 0.7 : e.swingFrom), back = e.ang - sd * e.weapon.half, end = e.ang + sd * e.weapon.half;
   if (t < WINDUP) return idle + (back - idle) * ease(t / WINDUP);
   if (t < WINDUP + SWING) { const u = (t - WINDUP) / SWING; return back + (end - back) * u * u; }
   const u = Math.min(1, (t - WINDUP - SWING) / RECOVER);
-  return end + ((e.ang + sd * SWING_HALF * 0.7) - end) * ease(u);
+  return end + ((e.ang + sd * e.weapon.half * 0.7) - end) * ease(u);
 }
 
 function initWorld() {
@@ -533,7 +533,7 @@ function initWorld() {
 }
 
 // ===== 전투 =====
-function startSwing(e) { e.swingDir = Math.cos(e.ang) >= 0 ? 1 : -1; e.swingFrom = e.restOff == null ? -e.swingDir * SWING_HALF * 0.7 : e.restOff; e.swingT = 0; e.hitSet = new Set(); e.cdT = cdOf(e); e.fxDone = false; e.prevA = null; }
+function startSwing(e) { e.swingDir = Math.cos(e.ang) >= 0 ? 1 : -1; e.swingFrom = e.restOff == null ? -e.swingDir * e.weapon.half * 0.7 : e.restOff; e.swingT = 0; e.hitSet = new Set(); e.cdT = cdOf(e); e.fxDone = false; e.prevA = null; }
 let fx = [];
 const killLog = []; // [이긴 무기 무게,길이,두께,먹은양, 진 무기 무게,길이,두께,먹은양, 사람여부]
 setInterval(() => { if (killLog.length) { logEvent('kills', { k: killLog.splice(0, 300) }); } }, 30000);
@@ -667,10 +667,10 @@ function update(dt) {
         fx.push({ type: 'sw', e, a0: e.ang - e.swingDir * e.weapon.half, a1: e.ang + e.swingDir * e.weapon.half, t: 0, T: 0.34, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
       }
       if (e.swingT >= WINDUP && e.swingT < WINDUP + SWING + 0.03) doHits(e);
-      if (e.swingT >= WINDUP + SWING + RECOVER) { e.swingT = -1; e.restOff = e.swingDir * SWING_HALF * 0.7; } // 아래쪽에서 시작해 대기 위치로 돌아감
+      if (e.swingT >= WINDUP + SWING + RECOVER) { e.swingT = -1; e.restOff = e.swingDir * e.weapon.half * 0.7; } // 아래쪽에서 시작해 대기 위치로 돌아감
     } else {
       // 대기 위치(위쪽)로 스르륵. 바라보는 방향이 바뀌면 반대쪽 위로 넘어감
-      const want = -(Math.cos(e.ang) >= 0 ? 1 : -1) * SWING_HALF * 0.7;
+      const want = -(Math.cos(e.ang) >= 0 ? 1 : -1) * e.weapon.half * 0.7;
       if (e.restOff == null) e.restOff = want;
       e.restOff += (want - e.restOff) * Math.min(1, dt * REST_FOLLOW);
       if (e.cdT <= 0) startSwing(e);
