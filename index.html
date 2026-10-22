@@ -122,10 +122,10 @@ const CHAR_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABSUAAASqCAIAAAAg
 
 // ===== 기본 설정 (밸런스 숫자는 여기서 조절) =====
 const R0 = 24;            // 처음 몸 크기
-const MAP_R = 5200;       // 맵 반지름
+const MAP_R = 15600;      // 맵 반지름
 const MAX_PLAYERS = 100;  // 최대 인원
-const ORB_TARGET = 6000;  // 맵에 깔린 알갱이 수
-const SPEED = 140;        // 이동 속도 (모두 같음)
+const ORB_TARGET = 18000; // 맵에 깔린 알갱이 수
+const SPEED = 280;        // 이동 속도 (모두 같음)
 const DASH_MUL = 3.2;      // 대시 중 이동 속도 배율
 const DASH_DUR = 0.28;     // 대시 한 번의 길이(초)
 const DASH_REFILL = 3;     // 게이지가 다시 차는 데 걸리는 시간(초). 다 차면 한 번 쓸 수 있음
@@ -134,7 +134,8 @@ const CHAR_RES = 300;      // 캐릭터 그림을 이 크기 안으로 줄여서
 // 성능은 대부분 크기(먹은 양)로 정해지고, 그림은 위아래 DRAW_EFFECT 만큼만 영향
 const ONE_SHOT = true;     // 누구든 한 방에 쓰러짐 (체력·공격력 없음)
 const BASE_DMG = 24;       // 처음 크기의 기본 공격력 (ONE_SHOT이면 안 씀)
-const BASE_CD = 1.0;       // 처음 크기의 기본 공격 간격(초)
+const BASE_CD = 0.8;       // 처음 크기의 기본 공격 간격(초)
+const SPEED_LEN = 2.2;     // 길이가 공격 간격에 주는 영향 (짧을수록 훨씬 빠르게)
 const BASE_RANGE = 80;     // 처음 크기의 기본 공격 범위 (무기가 보이는 크기도 이에 비례)
 const DRAW_W = 0.4;        // (ONE_SHOT이 아닐 때) 무게가 주는 영향: 무거우면 공격력 최대 +40%, 공격 간격 최대 +40%
 const DRAW_L = 0.3;        // 길이가 주는 영향: 길면 범위 최대 +30%, 짧으면 -30%
@@ -148,6 +149,7 @@ const HP_PER = 1.5;        // 초록 1개 = 최대 체력 +1.5
 // 파랑 = 몸·무기 크기. 체력은 늘지 않음
 // 컴퓨터 상대 시작 크기
 const BOT_START_BIG = 0.12, BOT_START_BIG_MAX = 150, BOT_START_MAX = 30;
+const GROW_R = 1.5;        // 파랑 구슬로 몸이 커지는 정도 (전에는 3)
 const GROW_CD = 0.8;       // 커질수록 공격 간격이 길어지는 정도
 const GROW_SLOW = 0;       // 커질수록 실제 이동 속도가 줄어드는 정도 (0 = 크기와 상관없이 같은 속도)
 const GROW_HEAVY = 0.6;    // 커질수록 걷기·휘두르기 동작이 느릿느릿해지는 정도
@@ -355,7 +357,7 @@ function statsOf(area, len) {
   // ONE_SHOT: 칠한 넓이가 곧 휘두르는 폭 (많이 칠할수록 넓게 쓸고, 그만큼 느림)
   const arc = ARC_MIN + (ARC_MAX - ARC_MIN) * (ONE_SHOT ? wn : tn), arcMul = ONE_SHOT ? 1 : Math.sqrt(90 / arc);
   const k = (v, d) => 1 - d + 2 * d * v; // v=0 → (1-d)배, v=1 → (1+d)배
-  const cover = (arc / 90) * Math.sqrt(k(ln, DRAW_L)); // 휩쓰는 넓이 (기본 = 1). 1차 분석 결과 긴 무기가 불리해 길이 비용을 절반으로
+  const cover = (arc / 90) * Math.pow(k(ln, DRAW_L), SPEED_LEN / COVER_COST); // 폭은 완만하게, 길이는 강하게 공격 간격에 반영
   return { dmg: BASE_DMG * k(wn, DRAW_W) * arcMul, cd: BASE_CD * (ONE_SHOT ? 1 : k(wn, DRAW_W)) * Math.pow(cover, COVER_COST), anim: 0.75 + 0.5 * wn, rangeMul: k(ln, DRAW_L), half: arc / 2 * Math.PI / 180, arc, wn, ln, tn, len };
 }
 function makeWeapon(cv, hand, name, user) {
@@ -494,7 +496,7 @@ function newEnt(name, weapon, bot) {
 function refresh(e) {
   const st = e.st, oldMax = e.maxhp;
   e.mass = st.atk + st.spd + st.hp + st.size;
-  e.r = R0 + Math.sqrt(st.size) * 3;
+  e.r = R0 + Math.sqrt(st.size) * GROW_R;
   e.maxhp = 100 + st.hp * HP_PER; e.hp += e.maxhp - oldMax;
   if (e.hp > e.maxhp) e.hp = e.maxhp;
   if (e.mass > e.maxMass) e.maxMass = e.mass;
