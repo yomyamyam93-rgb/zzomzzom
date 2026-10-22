@@ -138,6 +138,7 @@ const BASE_RANGE = 80;     // 처음 크기의 기본 공격 범위 (무기가 �
 const DRAW_W = 0.4;        // 무게가 주는 영향: 무거우면 공격력 최대 +40%, 공격 간격 최대 +40% (가벼우면 반대)
 const DRAW_L = 0.3;        // 길이가 주는 영향: 길면 범위 최대 +30%, 짧으면 -30%
 const ARC_MIN = 60, ARC_MAX = 120; // 휘두르는 폭(도): 가늘면 60도, 넓적하면 120도. 넓을수록 한 방은 약해짐
+const COVER_COST = 0.5;    // 휩쓰는 넓이(폭×거리)가 기본보다 넓을수록 공격 간격이 길어지는 정도 (0 = 영향 없음)
 // 구슬 한 개당 효과
 // 구슬 한 개당 효과. 상한 없이 계속 올라감
 const ATK_PER = 0.015;     // 빨강 1개 = 공격력 +1.5%
@@ -165,6 +166,7 @@ const WINDUP = 0.16, SWING = 0.1, RECOVER = 0.2; // 공격 동작: 뒤로 젖힘
 const REPORT_LIMIT = 5;   // 목록에서 내려가는 신고 수 (서버 붙으면 사용)
 
 const $ = id => document.getElementById(id);
+const SIM = /[?&]sim=(\d+)/.test(location.search) ? Math.max(1, Math.min(8, +RegExp.$1)) : 0; // ?sim=3 이면 3배속
 // ===== 통계·한마디 저장 (config.js에 주소와 키가 있을 때만 동작) =====
 const CFG = (typeof window.JJ_CONFIG === 'object' && window.JJ_CONFIG) || {};
 const canLog = !!CFG.api && location.protocol !== 'file:';
@@ -351,7 +353,8 @@ function statsOf(area, len) {
   const tn = clamp((area / Math.max(1, len) - 12) / 50, 0, 1); // 두께: 길이 대비 넓이
   const arc = ARC_MIN + (ARC_MAX - ARC_MIN) * tn, arcMul = Math.sqrt(90 / arc); // 넓게 쓸수록 힘이 분산
   const k = (v, d) => 1 - d + 2 * d * v; // v=0 → (1-d)배, v=1 → (1+d)배
-  return { dmg: BASE_DMG * k(wn, DRAW_W) * arcMul, cd: BASE_CD * k(wn, DRAW_W), anim: 0.75 + 0.5 * wn, rangeMul: k(ln, DRAW_L), half: arc / 2 * Math.PI / 180, arc, wn, ln, tn, len };
+  const cover = (arc / 90) * k(ln, DRAW_L); // 휩쓰는 넓이 (기본 = 1)
+  return { dmg: BASE_DMG * k(wn, DRAW_W) * arcMul, cd: BASE_CD * k(wn, DRAW_W) * Math.pow(cover, COVER_COST), anim: 0.75 + 0.5 * wn, rangeMul: k(ln, DRAW_L), half: arc / 2 * Math.PI / 180, arc, wn, ln, tn, len };
 }
 function makeWeapon(cv, hand, name, user) {
   const a = analyze(cv); if (!a) return null;
@@ -926,7 +929,8 @@ function render() {
 let lastT = performance.now();
 function loop(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
-  update(dt); render();
+  if (SIM) { for (let i = 0; i < SIM; i++) update(dt); } else update(dt);
+  render();
   requestAnimationFrame(loop);
 }
 cv.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; touch.dir = null; });
@@ -1119,6 +1123,7 @@ $('btnEdDone').onclick = () => {
 // ===== 시작 =====
 $('menuChar').src = CHAR_SRC;
 genPresets();
+if (SIM) { show(null); document.getElementById('proto').textContent = `시뮬레이션 모드 ${SIM}배속 · 컴퓨터끼리 싸우는 중 · 전투 기록 저장`; }
 // 방문 기록: 유입 경로, 기기, 화면, 언어, 처음인지. 나갈 때 머문 시간도 보냄
 (function () {
   let first = false; try { first = !localStorage.getItem('jj_seen'); localStorage.setItem('jj_seen', '1'); } catch (e) {}
