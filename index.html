@@ -157,6 +157,9 @@ const HAND_LINE = 0.03;    // 손 테두리 굵기 (몸 폭 대비, 캐릭터 �
 const HAND_OUT = 0.95;     // 손 위치: 몸 가장자리 기준 (1 = 테두리 바로 위, 작을수록 안쪽)
 const MAGNET = 40;         // 알갱이가 빨려 오기 시작하는 거리 (몸 테두리 바깥으로)
 const MAGNET_SPEED = 260;  // 빨려 오는 빠르기
+const CAM_VIEW = 950;      // 카메라 거리: 작을수록 가깝게 (속도감↑). 전에는 1800
+const CAM_GROW = 0.35;     // 커질수록 카메라가 멀어지는 정도
+const CAM_MIN = 0.45;      // 아무리 커져도 이보다 더 멀어지진 않음
 const LINE_PX = 2.5;      // 화면에 보이는 선 굵기 (크기와 상관없이 항상 같음)
 const OUTLINE_PX = 1;      // 무기 바깥 밝은 테두리 두께 (화면 기준)
 const OUTLINE_COLOR = "#e9e9ee";
@@ -730,8 +733,8 @@ function update(dt) {
   if (!focus) { focus = ents.reduce((a, b) => (b.alive && (!a || b.mass > a.mass)) ? b : a, null); }
   if (focus) {
     cam.x += (focus.x - cam.x) * Math.min(1, dt * 6); cam.y += (focus.y - cam.y) * Math.min(1, dt * 6);
-    const base = Math.min(VW, VH) / 1800; // 화면 배율 (숫자가 클수록 더 작게 보임)
-    const tz = base * clamp(1 / (1 + (scaleOf(focus) - 1) * 0.5), 0.28, 1);
+    const base = Math.min(VW, VH) / CAM_VIEW; // 화면 배율 (숫자가 클수록 더 멀리서 봄)
+    const tz = base * clamp(1 / (1 + (scaleOf(focus) - 1) * CAM_GROW), CAM_MIN, 1);
     cam.z += (tz - cam.z) * Math.min(1, dt * 1.5);
   }
   // 본 무기 기록
