@@ -30,6 +30,7 @@ button.link:hover{color:var(--ink)}
 input[type=text]{font-family:inherit;font-size:18px;padding:10px 18px;border:2px solid var(--line);border-radius:30px;text-align:center;width:260px;margin:10px 0;background:var(--pill);color:var(--ink);box-shadow:0 6px 40px rgba(0,0,0,.8);outline:none}
 input[type=text]::placeholder{color:var(--dim)}
 #menuChar{width:150px;margin:0 0 4px;filter:drop-shadow(0 8px 30px rgba(0,0,0,.8))}
+#introCv{width:min(720px,94vw);height:auto;display:block;margin:-6px auto 0;cursor:pointer}
 #lastLine{min-height:22px;color:var(--ink);font-size:16px;margin-top:6px}
 #tip{min-height:20px;color:var(--dim);font-size:14px;margin:6px 0 2px;transition:opacity .4s}
 #menuWeapon{position:fixed;left:18px;bottom:18px;z-index:11;cursor:pointer;opacity:.85;text-align:center;font-size:13px;color:var(--dim)}
@@ -59,7 +60,7 @@ textarea{background:var(--pill)!important;color:var(--ink)!important;border:2px 
 <!-- 시작 화면 -->
 <div class="overlay show" id="menu"><div class="box">
   <img id="menuChar" alt="">
-  <h1>쫌쫌따리</h1>
+  <canvas id="introCv" width="720" height="170" title="다시 보기"></canvas>
   <div id="lastLine">&nbsp;</div>
   <div id="tip">&nbsp;</div>
   <div><input type="text" id="nick" maxlength="12" placeholder="닉네임"></div>
@@ -1001,7 +1002,7 @@ cv.addEventListener('mousedown', e => { if (e.button === 0 && me && me.alive) me
 addEventListener('contextmenu', e => e.preventDefault());
 
 // ===== 화면 전환 =====
-function show(id) { ['menu', 'editor', 'picker', 'result'].forEach(o => $(o).classList.toggle('show', o === id)); }
+function show(id) { ['menu', 'editor', 'picker', 'result'].forEach(o => $(o).classList.toggle('show', o === id)); if (id === 'menu') playIntro(); }
 function nick() { return ($('nick').value || '').trim() || '쫌쫌따리'; }
 function startGame(w) {
   if (!w) return;
@@ -1069,10 +1070,54 @@ function refreshMenuWeapon() {
   $('menuWeaponName').textContent = w.user ? (w.name === nick() ? '내가 그린 무기' : w.name) : '기본 무기';
   $('menuWeapon').style.display = $('menu').classList.contains('show') ? '' : 'none';
 }
+// ===== 제목 인트로: 무기가 휙 지나가며 글자가 베여 나타남 =====
+const introCv = $('introCv'), ix = introCv.getContext('2d');
+let introT0 = 0, introRaf = 0;
+function playIntro() { introT0 = performance.now(); cancelAnimationFrame(introRaf); introRaf = requestAnimationFrame(drawIntro); }
+$('introCv').onclick = playIntro;
+const INTRO_TEXT = '쫌쫌따리', INTRO_DUR = 1.6;
+function drawIntro() {
+  const W = introCv.width, H = introCv.height, t = (performance.now() - introT0) / 1000, now = performance.now();
+  ix.clearRect(0, 0, W, H);
+  ix.font = "104px 'Jua','Malgun Gothic',sans-serif"; ix.textBaseline = 'middle'; ix.textAlign = 'center';
+  // 글자 위치
+  const widths = [...INTRO_TEXT].map(ch => ix.measureText(ch).width), total = widths.reduce((a, b) => a + b, 0);
+  let x = (W - total) / 2; const pos = widths.map(w => { const c = x + w / 2; x += w; return c; });
+  const cy = H * 0.55, sweepT = 0.55, sx = -120 + (W + 240) * ease(Math.min(1, t / sweepT)); // 베는 칼끝 x
+  // 글자: 칼끝이 지나간 것만 보임. 막 베인 글자는 위아래 반쪽이 어긋났다가 맞물림
+  [...INTRO_TEXT].forEach((ch, i) => {
+    const hitT = sweepT * ((pos[i] + 120) / (W + 240)); if (t < hitT) return;
+    const age = t - hitT, k = Math.min(1, age / 0.35), cut = 10 * (1 - k) * (1 - k), pop = 1 + 0.25 * (1 - k) * (1 - k);
+    const wob = t > INTRO_DUR ? Math.sin(now / 420 + i * 1.7) * 2 : 0;
+    const draw = (clipTop) => {
+      ix.save(); ix.beginPath(); ix.rect(pos[i] - 80, clipTop ? 0 : cy, 160, clipTop ? cy : H - cy); ix.clip();
+      ix.translate(pos[i] + (clipTop ? cut : -cut), cy + wob); ix.scale(pop, pop);
+      ix.lineWidth = 10; ix.lineJoin = 'round'; ix.strokeStyle = '#111'; ix.strokeText(ch, 0, 0);
+      ix.fillStyle = '#e6e9ff'; ix.fillText(ch, 0, 0); ix.restore();
+    };
+    draw(true); draw(false);
+    if (age < 0.18) { ix.globalAlpha = 1 - age / 0.18; ix.strokeStyle = '#fff'; ix.lineWidth = 3; ix.beginPath(); ix.moveTo(pos[i] - 70, cy + 6); ix.lineTo(pos[i] + 70, cy - 6); ix.stroke(); ix.globalAlpha = 1; } // 베인 자국
+  });
+  // 칼과 궤적
+  if (t < sweepT + 0.25) {
+    const fade = t < sweepT ? 1 : 1 - (t - sweepT) / 0.25;
+    ix.globalAlpha = 0.9 * fade; ix.strokeStyle = '#fff'; ix.lineCap = 'round';
+    ix.lineWidth = 4; ix.beginPath(); ix.moveTo(Math.max(-50, sx - 260), cy + 20); ix.quadraticCurveTo(sx - 120, cy - 40, sx, cy - 8); ix.stroke();
+    ix.lineWidth = 2; for (const dy of [-26, 34]) { ix.beginPath(); ix.moveTo(Math.max(-50, sx - 200), cy + dy); ix.lineTo(sx - 60, cy + dy * 0.6); ix.stroke(); }
+    const w = currentWeapon();
+    if (w && t < sweepT) {
+      ix.save(); ix.translate(sx, cy - 8); ix.rotate(-0.9 + 1.4 * (t / sweepT)); const sc = 150 / w.len;
+      ix.scale(sc, sc); ix.rotate(-w.baseAng); ix.drawImage(w.cv, -w.hand.x, -w.hand.y); ix.restore();
+    }
+    ix.globalAlpha = 1;
+  }
+  if ($('menu').classList.contains('show')) introRaf = requestAnimationFrame(drawIntro);
+}
 const TIPS = ['상대 무기의 빛이 차오르면 곧 휘두릅니다. 한 발 빠지세요.', '누구든 한 방에 쓰러집니다. 덩치는 소용없습니다.', '짧게 그리면 빠르고, 길게 그리면 멀리 닿습니다.', '많이 칠할수록 넓게 쓸지만 느려집니다.', '왼쪽 클릭은 대시. 발밑 게이지가 차야 쓸 수 있습니다.', '파랑 구슬은 몸과 무기가 커지고, 노랑 구슬은 더 자주 휘두릅니다.', '쓰러뜨리면 상대가 먹은 구슬이 쏟아집니다.', '가장 많이 먹은 쫌쫌따리에겐 왕관이 씌워집니다.'];
 let tipI = Math.floor(Math.random() * TIPS.length);
 function nextTip() { const el = $('tip'); el.style.opacity = 0; setTimeout(() => { el.textContent = TIPS[tipI++ % TIPS.length]; el.style.opacity = 1; }, 400); }
 nextTip(); setInterval(nextTip, 5000);
+(document.fonts ? document.fonts.load("104px 'Jua'") : Promise.resolve()).then(() => playIntro(), () => playIntro());
 $('btnPickBack').onclick = () => show(mode === 'dead' ? 'result' : 'menu');
 $('sortNew').onclick = () => { sortMode = 'new'; renderPicker(); };
 $('sortUsed').onclick = () => { sortMode = 'used'; renderPicker(); };
