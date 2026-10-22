@@ -505,7 +505,8 @@ function handPos(e) { const a = weaponAng(e), d = handDist(e); return [e.x + Mat
 const ease = t => t * t * (3 - 2 * t);
 // 공격 동작: 들고 있음 → 뒤로 젖힘 → 휙 → 제자리 (다음엔 반대 방향으로)
 function weaponAng(e) {
-  const sd = e.swingDir, idle = e.ang - sd * SWING_HALF * 0.7, back = e.ang - sd * SWING_HALF, end = e.ang + sd * SWING_HALF, t = e.swingT;
+  // 항상 위에서 아래로 휘두름: 오른쪽을 볼 땐 시계 방향, 왼쪽을 볼 땐 반시계 방향
+  const sd = e.swingT >= 0 ? e.swingDir : (Math.cos(e.ang) >= 0 ? 1 : -1), idle = e.ang - sd * SWING_HALF * 0.7, back = e.ang - sd * SWING_HALF, end = e.ang + sd * SWING_HALF, t = e.swingT;
   if (t < 0) return idle;
   if (t < WINDUP) return idle + (back - idle) * ease(t / WINDUP);
   if (t < WINDUP + SWING) { const u = (t - WINDUP) / SWING; return back + (end - back) * u * u; }
@@ -524,7 +525,7 @@ function initWorld() {
 }
 
 // ===== 전투 =====
-function startSwing(e) { e.swingT = 0; e.hitSet = new Set(); e.cdT = cdOf(e); e.fxDone = false; e.prevA = null; }
+function startSwing(e) { e.swingDir = Math.cos(e.ang) >= 0 ? 1 : -1; e.swingT = 0; e.hitSet = new Set(); e.cdT = cdOf(e); e.fxDone = false; e.prevA = null; }
 let fx = [];
 function doHits(e) {
   const A1 = weaponAng(e), A0 = e.prevA == null ? A1 : e.prevA; e.prevA = A1;
@@ -652,7 +653,7 @@ function update(dt) {
         fx.push({ type: 'sw', e, a0: e.ang - e.swingDir * SWING_HALF, a1: e.ang + e.swingDir * SWING_HALF, t: 0, T: 0.34, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
       }
       if (e.swingT >= WINDUP && e.swingT < WINDUP + SWING + 0.03) doHits(e);
-      if (e.swingT >= WINDUP + SWING + RECOVER) { e.swingT = -1; e.swingDir *= -1; }
+      if (e.swingT >= WINDUP + SWING + RECOVER) e.swingT = -1;
     } else if (e.cdT <= 0) startSwing(e);
     if (e.flash > 0) e.flash -= dt;
     // 천천히 회복
