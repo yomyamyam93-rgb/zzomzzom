@@ -38,11 +38,9 @@ img.w{height:32px;image-rendering:pixelated;background:#fff;border-radius:6px;ve
 <body>
 <div id="login" class="card">
   <h1>쫌쫌따리 관리</h1>
-  <input id="email" type="email" placeholder="이메일" autocomplete="username">
   <input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password">
   <button id="btnLogin">로그인</button>
   <div id="err"></div>
-  <p class="hint">설정이 비어 있으면 로그인이 안 됩니다. config.js에 주소와 키를 채워 주세요.</p>
 </div>
 
 <div id="dash" style="display:none">
@@ -73,35 +71,32 @@ img.w{height:32px;image-rendering:pixelated;background:#fff;border-radius:6px;ve
 </div>
 
 <script src="../config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
-const CFG = (window.JJ_CONFIG || {});
-let sb = null, rows = [];
-if (CFG.url && CFG.key) sb = window.supabase.createClient(CFG.url, CFG.key);
-else $('err').textContent = '설정이 비어 있습니다.';
+const API = ((window.JJ_CONFIG || {}).api || '/api');
+let rows = [];
+const api = (path, opt) => fetch(API + path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opt || {}));
 
 $('btnLogin').onclick = async () => {
-  if (!sb) return;
   $('err').textContent = '';
-  const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('pw').value });
-  if (error) { $('err').textContent = '로그인 실패: 이메일이나 비밀번호를 확인해 주세요.'; return; }
-  await load();
+  const r = await api('/admin/login', { method: 'POST', body: JSON.stringify({ password: $('pw').value }) });
+  if (r.status === 429) { $('err').textContent = '너무 많이 시도했습니다. 1분 뒤 다시.'; return; }
+  if (!r.ok) { $('err').textContent = '비밀번호가 틀렸습니다.'; return; }
+  $('pw').value = ''; await load();
 };
 $('pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnLogin').click(); });
-$('btnLogout').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$('btnLogout').onclick = async () => { await api('/admin/logout', { method: 'POST' }); location.reload(); };
 $('btnReload').onclick = load;
 $('range').onchange = render;
 
 async function load() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) return;
   rows = [];
-  for (let from = 0; from < 50000; from += 1000) {
-    const { data, error } = await sb.from('events').select('*').order('created_at', { ascending: false }).range(from, from + 999);
-    if (error) { $('err').textContent = '불러오기 실패: ' + error.message; return; }
-    rows.push(...data); if (data.length < 1000) break;
+  for (let off = 0; off < 50000; off += 1000) {
+    const r = await api(`/admin/events?limit=1000&offset=${off}`);
+    if (r.status === 401) { $('login').style.display = ''; $('dash').style.display = 'none'; return; }
+    if (!r.ok) { $('err').textContent = '불러오기 실패'; return; }
+    const data = await r.json(); rows.push(...data); if (data.length < 1000) break;
   }
   $('login').style.display = 'none'; $('dash').style.display = '';
   render();
@@ -135,8 +130,8 @@ function render() {
     : '<p class="hint">아직 온 한마디가 없습니다.</p>';
   $('fbList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('이 한마디를 지울까요?')) return;
-    const { error } = await sb.from('events').delete().eq('id', b.dataset.del);
-    if (error) alert('삭제 실패: ' + error.message); else { rows = rows.filter(r => String(r.id) !== b.dataset.del); render(); }
+    const r = await api('/admin/events/' + b.dataset.del, { method: 'DELETE' });
+    if (!r.ok) alert('삭제 실패'); else { rows = rows.filter(x => String(x.id) !== b.dataset.del); render(); }
   });
 
   const byDay = {};
@@ -162,7 +157,7 @@ function render() {
       d.data.st ? `${d.data.st.atk}/${d.data.st.spd}/${d.data.st.hp}/${d.data.st.size}` : '', esc(d.data.killer)]));
 }
 
-if (sb) sb.auth.getSession().then(({ data: { session } }) => { if (session) load(); });
+api('/admin/me').then(r => { if (r.ok) load(); });
 </script>
 </body>
 </html>

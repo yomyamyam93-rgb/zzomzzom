@@ -165,14 +165,13 @@ const REPORT_LIMIT = 5;   // 목록에서 내려가는 신고 수 (서버 붙으
 const $ = id => document.getElementById(id);
 // ===== 통계·한마디 저장 (config.js에 주소와 키가 있을 때만 동작) =====
 const CFG = (typeof window.JJ_CONFIG === 'object' && window.JJ_CONFIG) || {};
-const canLog = !!(CFG.url && CFG.key);
+const canLog = !!CFG.api && location.protocol !== 'file:';
 let visitorId = '';
 try { visitorId = localStorage.getItem('jj_vid') || ''; if (!visitorId) { visitorId = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); localStorage.setItem('jj_vid', visitorId); } } catch (e) {}
 function logEvent(type, data) {
   if (!canLog) return Promise.resolve(false);
-  return fetch(CFG.url + '/rest/v1/events', {
-    method: 'POST',
-    headers: { apikey: CFG.key, Authorization: 'Bearer ' + CFG.key, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+  return fetch(CFG.api + '/events', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type, nick: (data && data.nick) || '', vid: visitorId, data: data || {} })
   }).then(r => r.ok).catch(() => false);
 }
