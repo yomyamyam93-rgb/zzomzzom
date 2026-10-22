@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>쫌쫌따리 관리</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#141417;color:#eee;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;padding:20px}
+h1{margin:0 0 16px;font-size:24px}
+h2{font-size:17px;margin:26px 0 10px;border-bottom:2px solid #333;padding-bottom:6px}
+.card{background:#1f1f24;border-radius:14px;padding:14px 16px}
+#login{max-width:360px;margin:60px auto}
+input,button,select{font-family:inherit;font-size:15px}
+input{width:100%;padding:10px;border:2px solid #444;border-radius:10px;background:#111;color:#eee;margin:6px 0}
+button{padding:9px 16px;border:2px solid #eee;border-radius:12px;background:#eee;color:#111;cursor:pointer;margin:4px 2px}
+button.ghost{background:none;color:#eee}
+button.danger{border-color:#ff6b6b;color:#ff6b6b;background:none;padding:3px 9px;font-size:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:#1f1f24;border-radius:14px;padding:12px}
+.tile .n{font-size:28px;font-weight:bold}
+.tile .l{font-size:12px;color:#999}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid #2c2c33;text-align:left;vertical-align:top}
+th{color:#aaa;font-weight:normal}
+.fb{background:#1f1f24;border-radius:12px;padding:10px 12px;margin:8px 0}
+.fb .meta{font-size:12px;color:#999;margin-bottom:4px}
+.fb .msg{white-space:pre-wrap;word-break:break-word}
+.bar{height:10px;background:#333;border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:#8fd3ff}
+img.w{height:32px;image-rendering:pixelated;background:#fff;border-radius:6px;vertical-align:middle;margin-right:6px}
+.hint{color:#888;font-size:13px}
+#top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+#err{color:#ff6b6b;min-height:20px}
+</style>
+</head>
+<body>
+<div id="login" class="card">
+  <h1>쫌쫌따리 관리</h1>
+  <input id="email" type="email" placeholder="이메일" autocomplete="username">
+  <input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password">
+  <button id="btnLogin">로그인</button>
+  <div id="err"></div>
+  <p class="hint">설정이 비어 있으면 로그인이 안 됩니다. config.js에 주소와 키를 채워 주세요.</p>
+</div>
+
+<div id="dash" style="display:none">
+  <div id="top">
+    <h1>쫌쫌따리 관리</h1>
+    <div>
+      <select id="range"><option value="1">오늘</option><option value="7" selected>최근 7일</option><option value="30">최근 30일</option><option value="3650">전체</option></select>
+      <button class="ghost" id="btnReload">새로고침</button>
+      <button class="ghost" id="btnLogout">로그아웃</button>
+    </div>
+  </div>
+  <div class="tiles" id="tiles"></div>
+
+  <h2>💬 개발자에게 한마디 <span class="hint" id="fbCount"></span></h2>
+  <div id="fbList"></div>
+
+  <h2>📅 날짜별</h2>
+  <table id="daily"></table>
+
+  <h2>⚔️ 많이 쓴 무기</h2>
+  <table id="weapons"></table>
+
+  <h2>💀 나를 쓰러뜨린 상대 (컴퓨터 이름 기준)</h2>
+  <table id="killers"></table>
+
+  <h2>🧾 최근 판 기록</h2>
+  <table id="runs"></table>
+</div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const CFG = (window.JJ_CONFIG || {});
+let sb = null, rows = [];
+if (CFG.url && CFG.key) sb = window.supabase.createClient(CFG.url, CFG.key);
+else $('err').textContent = '설정이 비어 있습니다.';
+
+$('btnLogin').onclick = async () => {
+  if (!sb) return;
+  $('err').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('pw').value });
+  if (error) { $('err').textContent = '로그인 실패: 이메일이나 비밀번호를 확인해 주세요.'; return; }
+  await load();
+};
+$('pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnLogin').click(); });
+$('btnLogout').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$('btnReload').onclick = load;
+$('range').onchange = render;
+
+async function load() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  rows = [];
+  for (let from = 0; from < 50000; from += 1000) {
+    const { data, error } = await sb.from('events').select('*').order('created_at', { ascending: false }).range(from, from + 999);
+    if (error) { $('err').textContent = '불러오기 실패: ' + error.message; return; }
+    rows.push(...data); if (data.length < 1000) break;
+  }
+  $('login').style.display = 'none'; $('dash').style.display = '';
+  render();
+}
+
+const fmt = d => new Date(d).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const dayKey = d => { const t = new Date(d); return `${t.getMonth() + 1}/${t.getDate()}`; };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+function tableHtml(head, body) { return `<tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>` + body.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join(''); }
+
+function render() {
+  const days = +$('range').value, since = Date.now() - days * 86400000;
+  const inR = rows.filter(r => new Date(r.created_at).getTime() >= since);
+  const visits = inR.filter(r => r.type === 'visit'), starts = inR.filter(r => r.type === 'start');
+  const deaths = inR.filter(r => r.type === 'death'), fbs = rows.filter(r => r.type === 'feedback');
+  const uniq = new Set(visits.map(r => r.vid).filter(Boolean)).size;
+  const tiles = [
+    ['방문', visits.length], ['방문자(기기 수)', uniq], ['게임 시작', starts.length], ['죽은 횟수', deaths.length],
+    ['평균 버틴 시간', Math.round(avg(deaths.map(d => d.data.time || 0))) + '초'],
+    ['평균 처치', avg(deaths.map(d => d.data.kills || 0)).toFixed(1)],
+    ['최고 처치', Math.max(0, ...deaths.map(d => d.data.kills || 0))],
+    ['최고 먹은 양', Math.max(0, ...deaths.map(d => d.data.maxMass || 0))],
+    ['직접 그린 무기로 시작', starts.length ? Math.round(100 * starts.filter(s => s.data.weaponUser).length / starts.length) + '%' : '-'],
+  ];
+  $('tiles').innerHTML = tiles.map(([l, n]) => `<div class="tile"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+
+  $('fbCount').textContent = `(${fbs.length}개, 전체 기간)`;
+  $('fbList').innerHTML = fbs.length ? fbs.map(f => `<div class="fb"><div class="meta">${fmt(f.created_at)} · ${esc(f.nick) || '익명'} · 처치 ${f.data.kills || 0} · 먹은 양 ${f.data.maxMass || 0}
+    <button class="danger" data-del="${f.id}">삭제</button></div><div class="msg">${esc(f.data.message)}</div></div>`).join('')
+    : '<p class="hint">아직 온 한마디가 없습니다.</p>';
+  $('fbList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if (!confirm('이 한마디를 지울까요?')) return;
+    const { error } = await sb.from('events').delete().eq('id', b.dataset.del);
+    if (error) alert('삭제 실패: ' + error.message); else { rows = rows.filter(r => String(r.id) !== b.dataset.del); render(); }
+  });
+
+  const byDay = {};
+  for (const r of inR) { const k = dayKey(r.created_at); byDay[k] = byDay[k] || { visit: 0, start: 0, death: 0, feedback: 0 }; byDay[k][r.type]++; }
+  const dk = Object.keys(byDay).slice(0, 60);
+  $('daily').innerHTML = tableHtml(['날짜', '방문', '시작', '죽음', '한마디'], dk.map(k => [k, byDay[k].visit, byDay[k].start, byDay[k].death, byDay[k].feedback]));
+
+  const wmap = {};
+  for (const d of deaths) { const k = d.data.weapon || '?'; const w = wmap[k] = wmap[k] || { n: 0, kills: [], time: [], thumb: d.data.weaponThumb, stat: d.data.weaponStat }; w.n++; w.kills.push(d.data.kills || 0); w.time.push(d.data.time || 0); }
+  const wl = Object.entries(wmap).sort((a, b) => b[1].n - a[1].n).slice(0, 20), wmax = wl.length ? wl[0][1].n : 1;
+  $('weapons').innerHTML = tableHtml(['무기', '판 수', '평균 처치', '평균 버팀', ''], wl.map(([k, w]) => [
+    `${w.thumb ? `<img class="w" src="${w.thumb}">` : ''}${esc(k)}<div class="hint">${esc(w.stat || '')}</div>`, w.n, avg(w.kills).toFixed(1), Math.round(avg(w.time)) + '초',
+    `<div class="bar" style="width:140px"><i style="width:${Math.round(100 * w.n / wmax)}%"></i></div>`]));
+
+  const kmap = {};
+  for (const d of deaths) { const k = d.data.killer || '(알 수 없음)'; kmap[k] = (kmap[k] || 0) + 1; }
+  const kl = Object.entries(kmap).sort((a, b) => b[1] - a[1]).slice(0, 15);
+  $('killers').innerHTML = tableHtml(['상대', '횟수'], kl.map(([k, n]) => [esc(k), n]));
+
+  $('runs').innerHTML = tableHtml(['시간', '닉네임', '무기', '처치', '먹은 양', '버틴 시간', '구슬(공/속/체/크)', '쓰러뜨린 상대'],
+    deaths.slice(0, 100).map(d => [fmt(d.created_at), esc(d.nick) || '익명', `${d.data.weaponThumb ? `<img class="w" src="${d.data.weaponThumb}">` : ''}${esc(d.data.weapon)}`,
+      d.data.kills || 0, d.data.maxMass || 0, (d.data.time || 0) + '초',
+      d.data.st ? `${d.data.st.atk}/${d.data.st.spd}/${d.data.st.hp}/${d.data.st.size}` : '', esc(d.data.killer)]));
+}
+
+if (sb) sb.auth.getSession().then(({ data: { session } }) => { if (session) load(); });
+</script>
+</body>
+</html>
