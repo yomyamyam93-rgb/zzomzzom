@@ -33,6 +33,7 @@ img.w{height:32px;image-rendering:pixelated;background:#fff;border-radius:6px;ve
 .hint{color:#888;font-size:13px}
 #top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 #err{color:#ff6b6b;min-height:20px}
+h3.sub{font-size:14px;color:#bbb;margin:6px 0}
 </style>
 </head>
 <body>
@@ -52,6 +53,16 @@ img.w{height:32px;image-rendering:pixelated;background:#fff;border-radius:6px;ve
       <button class="ghost" id="btnLogout">로그아웃</button>
     </div>
   </div>
+  <h2>🚦 트래픽</h2>
+  <div class="tiles" id="traffic"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:12px">
+    <div><h3 class="sub">날짜별 방문자</h3><table id="tDaily"></table></div>
+    <div><h3 class="sub">유입 경로</h3><table id="tRef"></table></div>
+    <div><h3 class="sub">기기</h3><table id="tDevice"></table></div>
+    <div><h3 class="sub">시간대별 방문</h3><table id="tHour"></table></div>
+  </div>
+
+  <h2>🎮 게임</h2>
   <div class="tiles" id="tiles"></div>
 
   <h2>💬 개발자에게 한마디 <span class="hint" id="fbCount"></span></h2>
@@ -114,6 +125,33 @@ function render() {
   const visits = inR.filter(r => r.type === 'visit'), starts = inR.filter(r => r.type === 'start');
   const deaths = inR.filter(r => r.type === 'death'), fbs = rows.filter(r => r.type === 'feedback');
   const uniq = new Set(visits.map(r => r.vid).filter(Boolean)).size;
+  // ---- 트래픽 ----
+  const leaves = inR.filter(r => r.type === 'leave');
+  const vids = v => new Set(v.map(r => r.vid).filter(Boolean));
+  const uv = vids(visits), newV = vids(visits.filter(r => r.data.first)), startedV = vids(starts), fbV = vids(inR.filter(r => r.type === 'feedback'));
+  const stay = leaves.map(l => l.data.seconds || 0).filter(x => x > 0 && x < 7200);
+  const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
+  $('traffic').innerHTML = [
+    ['방문 수', visits.length], ['방문자', uv.size], ['신규 방문자', newV.size], ['재방문자', uv.size - newV.size],
+    ['평균 머문 시간', stay.length ? Math.round(avg(stay)) + '초' : '-'],
+    ['방문 → 게임 시작', pct(startedV.size, uv.size)], ['방문 → 한마디', pct(fbV.size, uv.size)],
+    ['모바일 비율', pct(visits.filter(v => v.data.device === 'mobile').length, visits.length)],
+  ].map(([l, n]) => `<div class="tile"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+  const tdMap = {};
+  for (const v of visits) { const k = dayKey(v.created_at); const o = tdMap[k] = tdMap[k] || { v: new Set(), n: new Set(), c: 0 }; o.c++; if (v.vid) o.v.add(v.vid); if (v.data.first && v.vid) o.n.add(v.vid); }
+  $('tDaily').innerHTML = tableHtml(['날짜', '방문', '방문자', '신규'], Object.keys(tdMap).slice(0, 31).map(k => [k, tdMap[k].c, tdMap[k].v.size, tdMap[k].n.size]));
+  const refMap = {};
+  for (const v of visits) { const k = v.data.ref || '(직접 입력·즐겨찾기)'; refMap[k] = (refMap[k] || 0) + 1; }
+  $('tRef').innerHTML = tableHtml(['어디서', '방문'], Object.entries(refMap).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, n]) => [esc(k), n]));
+  const devMap = {};
+  for (const v of visits) { const k = `${v.data.device === 'mobile' ? '모바일' : 'PC'} · ${v.data.w || '?'}×${v.data.h || '?'} · ${v.data.lang || ''}`; devMap[k] = (devMap[k] || 0) + 1; }
+  $('tDevice').innerHTML = tableHtml(['기기 · 화면 · 언어', '방문'], Object.entries(devMap).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => [esc(k), n]));
+  const hours = new Array(24).fill(0);
+  for (const v of visits) hours[new Date(v.created_at).getHours()]++;
+  const hmax = Math.max(1, ...hours);
+  $('tHour').innerHTML = tableHtml(['시', '방문', ''], hours.map((n, h) => [h + '시', n, `<div class="bar" style="width:120px"><i style="width:${Math.round(100 * n / hmax)}%"></i></div>`]).filter(r => true));
+
+  // ---- 게임 ----
   const tiles = [
     ['방문', visits.length], ['방문자(기기 수)', uniq], ['게임 시작', starts.length], ['죽은 횟수', deaths.length],
     ['평균 버틴 시간', Math.round(avg(deaths.map(d => d.data.time || 0))) + '초'],

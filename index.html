@@ -943,6 +943,7 @@ function startGame(w) {
   const bots = ents.filter(e => e.alive);
   if (bots.length >= MAX_PLAYERS) { const b = bots.sort((a, b2) => a.mass - b2.mass)[0]; ents = ents.filter(e => e !== b); }
   me = newEnt(nick(), w, false); ents.push(me);
+  window._plays = (window._plays || 0) + 1;
   logEvent('start', { nick: me.name, weapon: w.name, weaponUser: w.user });
   cam.x = me.x; cam.y = me.y;
   track = { killer: null, killerName: '', victims: [], seen: [], tick: 0, time: 0 };
@@ -1088,7 +1089,21 @@ $('btnEdDone').onclick = () => {
 // ===== 시작 =====
 $('menuChar').src = CHAR_SRC;
 genPresets();
-logEvent('visit', {});
+// 방문 기록: 유입 경로, 기기, 화면, 언어, 처음인지. 나갈 때 머문 시간도 보냄
+(function () {
+  let first = false; try { first = !localStorage.getItem('jj_seen'); localStorage.setItem('jj_seen', '1'); } catch (e) {}
+  let ref = ''; try { ref = document.referrer ? new URL(document.referrer).hostname : ''; } catch (e) {}
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  logEvent('visit', { ref, first, device: mobile ? 'mobile' : 'pc', w: screen.width, h: screen.height, lang: navigator.language, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || '' });
+  const t0 = Date.now(); let sent = false;
+  const leave = () => {
+    if (sent || !canLog) return; sent = true;
+    const payload = JSON.stringify({ type: 'leave', nick: '', vid: visitorId, data: { seconds: Math.round((Date.now() - t0) / 1000), plays: window._plays || 0 } });
+    try { navigator.sendBeacon(CFG.api + '/events', new Blob([payload], { type: 'application/json' })); } catch (e) {}
+  };
+  addEventListener('pagehide', leave);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') leave(); });
+})();
 prepChar(() => loadUserPool(() => { initWorld(); requestAnimationFrame(loop); }));
 setInterval(() => { $('btnLast').style.display = lastWeapon ? '' : 'none'; }, 500);
 </script>
