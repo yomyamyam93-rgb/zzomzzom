@@ -4,39 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>쫌쫌따리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:#fff;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111}
+:root{--bg:#15171f;--map:#2b2b31;--pill:#3b4a7a;--ink:#e6e9ff;--dim:#8a93c4;--accent:#8fa3ff;--play:#ffd34d;--line:#111}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:'Jua','Malgun Gothic',sans-serif;color:var(--ink)}
 #game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
-.overlay{position:fixed;inset:0;background:rgba(255,255,255,.93);display:none;justify-content:center;align-items:flex-start;overflow:auto;z-index:10}
+.overlay{position:fixed;inset:0;background:rgba(21,23,31,.72);display:none;justify-content:center;align-items:flex-start;overflow:auto;z-index:10}
 .overlay.show{display:flex}
 .box{max-width:980px;width:100%;padding:28px 16px;text-align:center}
-h1{font-size:54px;margin:4px 0 0;letter-spacing:2px}
-h2{margin:6px 0 12px}
-.sub{color:#777;margin-bottom:14px}
-button{font-family:inherit;font-size:16px;padding:10px 18px;border:3px solid #111;background:#fff;color:#111;border-radius:14px;cursor:pointer;margin:4px}
-button:hover{background:#111;color:#fff}
-button.sm{font-size:13px;padding:5px 10px;border-width:2px;border-radius:10px;margin:2px}
-button.on{background:#111;color:#fff}
-button.warn{border-color:#c33;color:#c33}
-button.warn:hover{background:#c33;color:#fff}
-button:disabled{opacity:.4;cursor:default;background:#fff;color:#111}
-input[type=text]{font-family:inherit;font-size:18px;padding:10px;border:3px solid #111;border-radius:14px;text-align:center;width:260px;margin:10px 0}
-#menuChar{width:170px;margin:8px 0}
+h1{font-size:54px;margin:4px 0 0;letter-spacing:2px;font-weight:normal;text-shadow:0 4px 30px rgba(0,0,0,.8)}
+h2{margin:6px 0 12px;font-weight:normal;font-size:26px}
+.sub{color:var(--dim);margin-bottom:14px}
+button{font-family:inherit;font-size:16px;padding:10px 22px;border:2px solid var(--line);background:var(--pill);color:var(--ink);border-radius:30px;cursor:pointer;margin:4px;box-shadow:0 6px 30px rgba(0,0,0,.7);opacity:.85;transition:opacity .1s}
+button:hover{opacity:1}
+button:active{opacity:.5}
+button.sm{font-size:13px;padding:5px 12px;margin:2px;box-shadow:0 3px 14px rgba(0,0,0,.6)}
+button.on{background:var(--accent);color:#111}
+button.warn{color:#ff8a8a}
+button:disabled{opacity:.3;cursor:default}
+button.play{font-size:30px;padding:12px 70px;background:var(--play);color:#111;border-radius:40px;box-shadow:0 6px 40px rgba(0,0,0,.8),0 0 40px rgba(255,211,77,.35);margin-top:18px}
+button.link{background:none;border:none;box-shadow:none;color:var(--dim);font-size:15px;padding:6px 10px}
+button.link:hover{color:var(--ink)}
+input[type=text]{font-family:inherit;font-size:18px;padding:10px 18px;border:2px solid var(--line);border-radius:30px;text-align:center;width:260px;margin:10px 0;background:var(--pill);color:var(--ink);box-shadow:0 6px 40px rgba(0,0,0,.8);outline:none}
+input[type=text]::placeholder{color:var(--dim)}
+#menuChar{width:150px;margin:0 0 4px;filter:drop-shadow(0 8px 30px rgba(0,0,0,.8))}
+#lastLine{min-height:22px;color:var(--ink);font-size:16px;margin-top:6px}
+#tip{min-height:20px;color:var(--dim);font-size:14px;margin:6px 0 2px;transition:opacity .4s}
+#menuWeapon{position:fixed;left:18px;bottom:18px;z-index:11;cursor:pointer;opacity:.85;text-align:center;font-size:13px;color:var(--dim)}
+#menuWeapon canvas{width:84px;height:84px;display:block;margin:0 auto 2px;background:rgba(255,255,255,.06);border:2px solid var(--line);border-radius:18px;box-shadow:0 6px 30px rgba(0,0,0,.7)}
+#menuWeapon:hover{opacity:1}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin:14px 0}
-.card{border:3px solid #111;border-radius:16px;padding:8px;background:#fff}
-.card canvas{width:120px;height:120px;display:block;margin:0 auto}
-.card .tag{font-size:12px;color:#c33;min-height:16px;font-weight:bold}
-.card .nm{font-size:13px;color:#555}
-.card .st{font-size:12px;margin:2px 0 4px}
+.card{border:2px solid var(--line);border-radius:18px;padding:8px;background:rgba(59,74,122,.45);box-shadow:0 6px 30px rgba(0,0,0,.6)}
+.card canvas{width:120px;height:120px;display:block;margin:0 auto;background:rgba(255,255,255,.06);border-radius:12px}
+.card .tag{font-size:12px;color:#ff8a8a;min-height:16px}
+.card .nm{font-size:13px;color:var(--dim)}
+.card .st{font-size:12px;margin:2px 0 4px;color:var(--ink)}
 .tools{margin:6px 0}
-.pal{display:inline-block;width:26px;height:26px;border-radius:50%;border:3px solid #ddd;margin:2px;cursor:pointer;vertical-align:middle}
-.pal.on{border-color:#111}
-#edWrap{position:relative;width:min(420px,90vw);aspect-ratio:1;margin:10px auto;border:3px solid #111;border-radius:14px;background:#fff;overflow:hidden;touch-action:none}
+.pal{display:inline-block;width:26px;height:26px;border-radius:50%;border:3px solid transparent;margin:2px;cursor:pointer;vertical-align:middle;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+.pal.on{border-color:var(--ink)}
+#edWrap{position:relative;width:min(420px,90vw);aspect-ratio:1;margin:10px auto;border:2px solid var(--line);border-radius:18px;background:#fff;overflow:hidden;touch-action:none;box-shadow:0 10px 50px rgba(0,0,0,.8)}
 #edWrap canvas{position:absolute;inset:0;width:100%;height:100%}
 #edReadout{font-size:15px;min-height:22px;margin:6px 0}
-.hint{font-size:13px;color:#888}
-#proto{position:fixed;left:10px;bottom:8px;font-size:12px;color:#666;z-index:5;pointer-events:none}
+.hint{font-size:13px;color:var(--dim)}
+#proto{position:fixed;left:10px;bottom:8px;font-size:12px;color:#555;z-index:5;pointer-events:none}
+textarea{background:var(--pill)!important;color:var(--ink)!important;border:2px solid var(--line)!important;border-radius:18px!important}
 </style>
 </head>
 <body>
@@ -45,16 +58,18 @@ input[type=text]{font-family:inherit;font-size:18px;padding:10px;border:3px soli
 
 <!-- 시작 화면 -->
 <div class="overlay show" id="menu"><div class="box">
-  <h1>쫌쫌따리</h1>
   <img id="menuChar" alt="">
-  <div><input type="text" id="nick" maxlength="12" placeholder="닉네임 (안 써도 됨)"></div>
+  <h1>쫌쫌따리</h1>
+  <div id="lastLine">&nbsp;</div>
+  <div id="tip">&nbsp;</div>
+  <div><input type="text" id="nick" maxlength="12" placeholder="닉네임"></div>
+  <div><button class="play" id="btnPlay">플레이</button></div>
   <div>
-    <button id="btnDraw">✏️ 그려서 시작</button>
-    <button id="btnPick">📂 남이 그린 무기 고르기</button>
-    <button id="btnLast" style="display:none">🔁 방금 무기로 시작</button>
+    <button class="link" id="btnDraw">✏️ 무기 그리기</button>
+    <button class="link" id="btnPick">📂 남이 그린 무기</button>
   </div>
-  <p class="hint">마우스 방향으로 따라가고, 바라보는 쪽으로 알아서 휘두릅니다.<br>누구든 한 방에 쓰러집니다. 상대 무기의 빛이 차면 곧 휘두르니 빠지세요. 구슬: 🟡 공속 🔵 크기(범위는 넓어지지만 과녁도 커지고 느려짐). 쓰러뜨리면 상대 구슬이 쏟아집니다. 왼쪽 클릭으로 대시(게이지가 다 차면 한 번). 가장 많이 먹은 쫌쫌따리에겐 왕관이 씌워집니다.</p>
 </div></div>
+<div id="menuWeapon" title="지금 든 무기"><canvas id="menuWeaponCv" width="84" height="84"></canvas><div id="menuWeaponName">기본 무기</div></div>
 
 <!-- 그림판 -->
 <div class="overlay" id="editor"><div class="box">
@@ -921,9 +936,10 @@ function render() {
     ctx.beginPath(); ctx.arc(touch.sx + dx * k, touch.sy + dy * k, 14, 0, 6.29); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fill();
   }
   const top = ents.filter(e => e.alive).sort((a, b) => b.mass - a.mass).slice(0, 10);
-  ctx.textAlign = 'left'; ctx.font = "bold 15px 'Malgun Gothic',sans-serif"; ctx.fillStyle = '#eee';
+  ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 1;
+  ctx.textAlign = 'left'; ctx.font = "15px 'Jua','Malgun Gothic',sans-serif"; ctx.fillStyle = '#eee';
   ctx.fillText('순위', VW - 190, 28);
-  ctx.font = "14px 'Malgun Gothic',sans-serif";
+  ctx.font = "14px 'Jua','Malgun Gothic',sans-serif";
   top.forEach((e, i) => { ctx.fillStyle = e === me ? '#ff6b6b' : '#ccc'; ctx.fillText(`${i + 1}. ${e.name}`, VW - 190, 50 + i * 20); ctx.textAlign = 'right'; ctx.fillText(Math.round(e.mass), VW - 16, 50 + i * 20); ctx.textAlign = 'left'; });
   ctx.fillStyle = '#999'; ctx.font = "14px 'Malgun Gothic',sans-serif";
   ctx.fillText(`접속 ${ents.filter(e => e.alive).length}/${MAX_PLAYERS}`, 14, 26);
@@ -939,6 +955,7 @@ function render() {
     ctx.font = "13px 'Malgun Gothic',sans-serif"; ctx.fillStyle = '#aaa';
     ctx.fillText(statText(me.weapon), 14, VH - 58);
   }
+  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.shadowOffsetY = 0;
 }
 
 let lastT = performance.now();
@@ -1022,6 +1039,7 @@ function renderPicker() {
 function openPicker() { renderPicker(); show('picker'); }
 function showResult() {
   $('resTitle').textContent = track.killerName ? `${track.killerName}에게 쓰러졌다!` : '쓰러졌다!';
+  $('lastLine').textContent = `지난 판: 처치 ${me.kills} · ${Math.round(track.time)}초 버팀` + (track.killerName ? ` · ${track.killerName}에게 당함` : '');
   $('resStats').textContent = `최대 먹은 양 ${Math.round(me.maxMass)} · 처치 ${me.kills} · 버틴 시간 ${Math.round(track.time)}초`;
   const box = $('resCards'); box.innerHTML = '';
   const out = [], ids = new Set();
@@ -1040,7 +1058,19 @@ function showResult() {
 }
 $('btnDraw').onclick = () => openEditor(null);
 $('btnPick').onclick = openPicker;
-$('btnLast').onclick = () => startGame(lastWeapon);
+$('btnPlay').onclick = () => startGame(currentWeapon());
+$('menuWeapon').onclick = openPicker;
+function currentWeapon() { if (lastWeapon && !isReported(lastWeapon)) return lastWeapon; const ok = pool.filter(w => !isReported(w)); return ok[0] || pool[0]; }
+function refreshMenuWeapon() {
+  const w = currentWeapon(); if (!w) return;
+  const c = $('menuWeaponCv'), x = c.getContext('2d'); x.clearRect(0, 0, 84, 84); x.drawImage(w.cv, 0, 0, 84, 84);
+  $('menuWeaponName').textContent = w.user ? (w.name === nick() ? '내가 그린 무기' : w.name) : '기본 무기';
+  $('menuWeapon').style.display = $('menu').classList.contains('show') ? '' : 'none';
+}
+const TIPS = ['상대 무기의 빛이 차오르면 곧 휘두릅니다. 한 발 빠지세요.', '누구든 한 방에 쓰러집니다. 덩치는 소용없습니다.', '짧게 그리면 빠르고, 길게 그리면 멀리 닿습니다.', '많이 칠할수록 넓게 쓸지만 느려집니다.', '왼쪽 클릭은 대시. 발밑 게이지가 차야 쓸 수 있습니다.', '파랑 구슬은 몸과 무기가 커지고, 노랑 구슬은 더 자주 휘두릅니다.', '쓰러뜨리면 상대가 먹은 구슬이 쏟아집니다.', '가장 많이 먹은 쫌쫌따리에겐 왕관이 씌워집니다.'];
+let tipI = Math.floor(Math.random() * TIPS.length);
+function nextTip() { const el = $('tip'); el.style.opacity = 0; setTimeout(() => { el.textContent = TIPS[tipI++ % TIPS.length]; el.style.opacity = 1; }, 400); }
+nextTip(); setInterval(nextTip, 5000);
 $('btnPickBack').onclick = () => show(mode === 'dead' ? 'result' : 'menu');
 $('sortNew').onclick = () => { sortMode = 'new'; renderPicker(); };
 $('sortUsed').onclick = () => { sortMode = 'used'; renderPicker(); };
@@ -1163,7 +1193,7 @@ if (SIM) {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') leave(); });
 })();
 prepChar(() => loadUserPool(() => { initWorld(); requestAnimationFrame(loop); }));
-setInterval(() => { $('btnLast').style.display = lastWeapon ? '' : 'none'; }, 500);
+setInterval(refreshMenuWeapon, 500);
 </script>
 </body>
 </html>
