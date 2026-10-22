@@ -53,7 +53,7 @@ input[type=text]{font-family:inherit;font-size:18px;padding:10px;border:3px soli
     <button id="btnPick">📂 남이 그린 무기 고르기</button>
     <button id="btnLast" style="display:none">🔁 방금 무기로 시작</button>
   </div>
-  <p class="hint">마우스 방향으로 따라가고, 바라보는 쪽으로 알아서 휘두릅니다.<br>구슬은 색마다 다릅니다. 🔴 공격력 🟡 공속 🟢 체력 🔵 크기. 파랑만 몸이 커지고 체력은 안 늘어납니다. 쓰러뜨리면 상대가 먹은 색 그대로 쏟아집니다. 왼쪽 클릭으로 대시(게이지가 다 차면 한 번). 가장 많이 먹은 쫌쫌따리에겐 왕관이 씌워집니다.</p>
+  <p class="hint">마우스 방향으로 따라가고, 바라보는 쪽으로 알아서 휘두릅니다.<br>누구든 한 방에 쓰러집니다. 상대 무기의 빛이 차면 곧 휘두르니 빠지세요. 구슬: 🟡 공속 🔵 크기(범위는 넓어지지만 과녁도 커지고 느려짐). 쓰러뜨리면 상대 구슬이 쏟아집니다. 왼쪽 클릭으로 대시(게이지가 다 차면 한 번). 가장 많이 먹은 쫌쫌따리에겐 왕관이 씌워집니다.</p>
 </div></div>
 
 <!-- 그림판 -->
@@ -78,7 +78,7 @@ input[type=text]{font-family:inherit;font-size:18px;padding:10px;border:3px soli
   </div>
   <div id="edWrap"><canvas id="edCv" width="256" height="256"></canvas><canvas id="edOv" width="256" height="256"></canvas></div>
   <div id="edReadout"></div>
-  <div class="hint">많이 칠할수록 세지만 느려지고, 길수록 멀리 닿습니다. 손 위치는 보이는 모습만 바꿉니다.</div>
+  <div class="hint">많이 칠할수록 넓게 쓸지만 느려지고, 길수록 멀리 닿습니다. 손 위치는 보이는 모습만 바꿉니다.</div>
   <div style="margin-top:8px">
     <button id="btnEdDone">⚔️ 이 무기로 시작</button>
     <button id="btnEdBack">뒤로</button>
@@ -132,13 +132,14 @@ const DASH_REFILL = 3;     // 게이지가 다시 차는 데 걸리는 시간(�
 const DASH_DUST = 220;     // 대시 중 1초에 나오는 먼지 알갱이 수
 const CHAR_RES = 300;      // 캐릭터 그림을 이 크기 안으로 줄여서 사용
 // 성능은 대부분 크기(먹은 양)로 정해지고, 그림은 위아래 DRAW_EFFECT 만큼만 영향
-const BASE_DMG = 24;       // 처음 크기의 기본 공격력
+const ONE_SHOT = true;     // 누구든 한 방에 쓰러짐 (체력·공격력 없음)
+const BASE_DMG = 24;       // 처음 크기의 기본 공격력 (ONE_SHOT이면 안 씀)
 const BASE_CD = 1.0;       // 처음 크기의 기본 공격 간격(초)
 const BASE_RANGE = 80;     // 처음 크기의 기본 공격 범위 (무기가 보이는 크기도 이에 비례)
-const DRAW_W = 0.4;        // 무게가 주는 영향: 무거우면 공격력 최대 +40%, 공격 간격 최대 +40% (가벼우면 반대)
+const DRAW_W = 0.4;        // (ONE_SHOT이 아닐 때) 무게가 주는 영향: 무거우면 공격력 최대 +40%, 공격 간격 최대 +40%
 const DRAW_L = 0.3;        // 길이가 주는 영향: 길면 범위 최대 +30%, 짧으면 -30%
 const ARC_MIN = 60, ARC_MAX = 120; // 휘두르는 폭(도): 가늘면 60도, 넓적하면 120도. 넓을수록 한 방은 약해짐
-const COVER_COST = 0.5;    // 휩쓰는 넓이(폭×거리)가 기본보다 넓을수록 공격 간격이 길어지는 정도 (0 = 영향 없음)
+const COVER_COST = 0.7;    // 휩쓰는 넓이(폭×거리)가 기본보다 넓을수록 공격 간격이 길어지는 정도 (0 = 영향 없음)
 // 구슬 한 개당 효과
 // 구슬 한 개당 효과. 상한 없이 계속 올라감
 const ATK_PER = 0.015;     // 빨강 1개 = 공격력 +1.5%
@@ -351,10 +352,11 @@ function statsOf(area, len) {
   // 무게: 0 = 선 하나 정도, 1 = 칼날을 꽉 채운 큰 무기 / 길이: 0 = 아주 짧음, 1 = 그림판 끝까지
   const wn = clamp((area - 1000) / 9000, 0, 1), ln = clamp((len - 60) / 220, 0, 1);
   const tn = clamp((area / Math.max(1, len) - 12) / 50, 0, 1); // 두께: 길이 대비 넓이
-  const arc = ARC_MIN + (ARC_MAX - ARC_MIN) * tn, arcMul = Math.sqrt(90 / arc); // 넓게 쓸수록 힘이 분산
+  // ONE_SHOT: 칠한 넓이가 곧 휘두르는 폭 (많이 칠할수록 넓게 쓸고, 그만큼 느림)
+  const arc = ARC_MIN + (ARC_MAX - ARC_MIN) * (ONE_SHOT ? wn : tn), arcMul = ONE_SHOT ? 1 : Math.sqrt(90 / arc);
   const k = (v, d) => 1 - d + 2 * d * v; // v=0 → (1-d)배, v=1 → (1+d)배
   const cover = (arc / 90) * Math.sqrt(k(ln, DRAW_L)); // 휩쓰는 넓이 (기본 = 1). 1차 분석 결과 긴 무기가 불리해 길이 비용을 절반으로
-  return { dmg: BASE_DMG * k(wn, DRAW_W) * arcMul, cd: BASE_CD * k(wn, DRAW_W) * Math.pow(cover, COVER_COST), anim: 0.75 + 0.5 * wn, rangeMul: k(ln, DRAW_L), half: arc / 2 * Math.PI / 180, arc, wn, ln, tn, len };
+  return { dmg: BASE_DMG * k(wn, DRAW_W) * arcMul, cd: BASE_CD * (ONE_SHOT ? 1 : k(wn, DRAW_W)) * Math.pow(cover, COVER_COST), anim: 0.75 + 0.5 * wn, rangeMul: k(ln, DRAW_L), half: arc / 2 * Math.PI / 180, arc, wn, ln, tn, len };
 }
 function makeWeapon(cv, hand, name, user) {
   const a = analyze(cv); if (!a) return null;
@@ -370,6 +372,7 @@ function makeWeapon(cv, hand, name, user) {
 }
 function statText(w) {
   const p = v => (v >= 1 ? '+' : '') + Math.round((v - 1) * 100) + '%';
+  if (ONE_SHOT) return `공격 간격 ${p(w.cd / BASE_CD)} · 범위 ${p(w.rangeMul)} · 휘두르는 폭 ${Math.round(w.arc)}° (기본 대비)`;
   return `공격력 ${p(w.dmg / BASE_DMG)} · 공격 간격 ${p(w.cd / BASE_CD)} · 범위 ${p(w.rangeMul)} · 휘두르는 폭 ${Math.round(w.arc)}° (기본 대비)`;
 }
 
@@ -459,7 +462,8 @@ let track = null;
 const KINDS = ['atk', 'spd', 'hp', 'size'];
 const KIND_COLOR = { atk: '#ff5c5c', spd: '#ffd93d', hp: '#5ee07a', size: '#5aa9ff' };
 const KIND_NAME = { atk: '공격력', spd: '공속', hp: '체력', size: '크기' };
-const KIND_WEIGHT = { atk: 1, spd: 1, hp: 1, size: 1 }; // 맵에 나오는 비율
+const KIND_WEIGHT = ONE_SHOT ? { atk: 0, spd: 1, hp: 0, size: 1 } : { atk: 1, spd: 1, hp: 1, size: 1 }; // 맵에 나오는 비율
+const LIVE_KINDS = KINDS.filter(k => KIND_WEIGHT[k] > 0);
 function randKind() { let t = Math.random() * (KIND_WEIGHT.atk + KIND_WEIGHT.spd + KIND_WEIGHT.hp + KIND_WEIGHT.size); for (const k of KINDS) { t -= KIND_WEIGHT[k]; if (t < 0) return k; } return 'size'; }
 
 function spawnPoint() { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * (MAP_R - 200); return [Math.cos(a) * r, Math.sin(a) * r]; }
@@ -498,7 +502,7 @@ function refresh(e) {
 function addStat(e, kind, v) { e.st[kind] = Math.max(0, e.st[kind] + v); refresh(e); }
 function setMass(e, m) { // 시작 크기 무작위 배정용: 네 색에 골고루
   for (const k of KINDS) e.st[k] = 0;
-  for (let left = m; left > 0; left -= 1) e.st[pick(KINDS)] += Math.min(1, left);
+  for (let left = m; left > 0; left -= 1) e.st[pick(LIVE_KINDS)] += Math.min(1, left);
   refresh(e);
 }
 // 캐릭터 그림 크기: 옆으로 넓은 그림은 폭을, 위로 긴 그림은 높이를 기준으로 맞춤
@@ -566,7 +570,8 @@ function doHits(e) {
     if (o === me || e === me) cam.shake = Math.max(cam.shake || 0, o === me ? 7 : 4);
     e.hitSet.add(o.id);
     const dmg = e.weapon.dmg * (1 + e.st.atk * ATK_PER);
-    o.hp -= dmg; o.flash = 0.15; o.lastAttacker = e;
+    if (ONE_SHOT) o.hp = 0; else o.hp -= dmg;
+    o.flash = 0.15; o.lastAttacker = e;
     // 맞으면 때린 쪽 반대로 튕겨 나가고, 잠깐 빨라져서 도망칠 틈이 생김
     const ka = Math.atan2(o.y - e.y, o.x - e.x), kb = HIT_KNOCK * Math.sqrt(e.r / o.r);
     o.kvx = (o.kvx || 0) + Math.cos(ka) * kb; o.kvy = (o.kvy || 0) + Math.sin(ka) * kb;
@@ -684,7 +689,7 @@ function update(dt) {
     }
     if (e.flash > 0) e.flash -= dt;
     // 천천히 회복
-    if (e.hp < e.maxhp) e.hp = Math.min(e.maxhp, e.hp + e.maxhp * 0.015 * dt);
+    if (!ONE_SHOT && e.hp < e.maxhp) e.hp = Math.min(e.maxhp, e.hp + e.maxhp * 0.015 * dt);
   }
   // 서로 겹치지 않게 밀어냄 (큰 쪽이 덜 밀림)
   const al = ents.filter(e => e.alive);
@@ -845,7 +850,7 @@ function drawEnt(e) {
   const top = e.y - h * 0.6, fs = Math.max(11 / cam.z, e.r * 0.42);
   ctx.font = `bold ${fs}px 'Malgun Gothic',sans-serif`; ctx.textAlign = 'center';
   ctx.fillStyle = e === me ? '#ff6b6b' : '#bbb'; ctx.fillText(e.name, e.x, top - fs * 0.4);
-  if (e.hp < e.maxhp - 0.5) {
+  if (!ONE_SHOT && e.hp < e.maxhp - 0.5) {
     const bw = e.r * 1.6, bh = Math.max(4 / cam.z, e.r * 0.12);
     ctx.fillStyle = '#444'; ctx.fillRect(e.x - bw / 2, top, bw, bh);
     ctx.fillStyle = e === me ? '#ff6b6b' : '#eee'; ctx.fillRect(e.x - bw / 2, top, bw * clamp(e.hp / e.maxhp, 0, 1), bh);
@@ -920,7 +925,7 @@ function render() {
     ctx.font = "bold 20px 'Malgun Gothic',sans-serif"; ctx.fillStyle = '#fff';
     ctx.fillText(`먹은 양 ${Math.round(me.mass)}   처치 ${me.kills}`, 14, VH - 34);
     let sx = 14; ctx.font = "bold 14px 'Malgun Gothic',sans-serif";
-    for (const k of KINDS) {
+    for (const k of LIVE_KINDS) {
       ctx.fillStyle = KIND_COLOR[k]; ctx.beginPath(); ctx.arc(sx + 6, VH - 84, 6, 0, 6.29); ctx.fill();
       const t = `${KIND_NAME[k]} ${Math.round(me.st[k])}`; ctx.fillStyle = '#ddd'; ctx.fillText(t, sx + 17, VH - 79);
       sx += 17 + ctx.measureText(t).width + 16;
