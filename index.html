@@ -353,7 +353,7 @@ function statsOf(area, len) {
   const tn = clamp((area / Math.max(1, len) - 12) / 50, 0, 1); // 두께: 길이 대비 넓이
   const arc = ARC_MIN + (ARC_MAX - ARC_MIN) * tn, arcMul = Math.sqrt(90 / arc); // 넓게 쓸수록 힘이 분산
   const k = (v, d) => 1 - d + 2 * d * v; // v=0 → (1-d)배, v=1 → (1+d)배
-  const cover = (arc / 90) * k(ln, DRAW_L); // 휩쓰는 넓이 (기본 = 1)
+  const cover = (arc / 90) * Math.sqrt(k(ln, DRAW_L)); // 휩쓰는 넓이 (기본 = 1). 1차 분석 결과 긴 무기가 불리해 길이 비용을 절반으로
   return { dmg: BASE_DMG * k(wn, DRAW_W) * arcMul, cd: BASE_CD * k(wn, DRAW_W) * Math.pow(cover, COVER_COST), anim: 0.75 + 0.5 * wn, rangeMul: k(ln, DRAW_L), half: arc / 2 * Math.PI / 180, arc, wn, ln, tn, len };
 }
 function makeWeapon(cv, hand, name, user) {
@@ -392,6 +392,10 @@ function presetParts(k, m, wd) {
     case 'hammer': return [[R(0, 160, 6), wd], [R(150, 200, 42), m]];
     case 'axe': return [[R(0, 190, 6), wd], [[[140, 6], [185, 6], [200, 60], [125, 55]], m]];
     case 'club': return [[[[0, -7], [150, -20], [185, -12], [195, 0], [185, 12], [150, 20], [0, 7]], wd]];
+    case 'cleaver': return [[R(0, 40, 6), wd], [[[40, -30], [200, -30], [205, 0], [200, 30], [40, 30]], m]];
+    case 'paddle': return [[R(0, 100, 6), wd], [circlePts(150, 55, 20), m]];
+    case 'slab': return [[[[0, -40], [160, -40], [160, 40], [0, 40]], m]];
+    case 'fan': return [[[[0, -4], [120, -70], [160, -50], [170, 0], [160, 50], [120, 70], [0, 4]], m]];
     default: return [[R(0, 150, 5), wd], [circlePts(185, 35, 18), m]];
   }
 }
@@ -400,15 +404,15 @@ const pool = [];
 function genPresets() {
   const metal = ['#c9ced6', '#ffd400', '#7fd1ff', '#ff6b6b', '#9be15d', '#c58cff', '#ff9f43', '#ffffff'];
   const wood = ['#a0663a', '#7a4a26', '#c98b4f'];
-  const kinds = ['sword', 'dagger', 'great', 'spear', 'hammer', 'axe', 'club', 'lolly', 'sword', 'spear', 'hammer', 'great', 'dagger', 'axe', 'club', 'lolly'];
+  const kinds = ['sword', 'dagger', 'great', 'spear', 'hammer', 'axe', 'club', 'lolly', 'cleaver', 'paddle', 'slab', 'fan', 'sword', 'spear', 'hammer', 'great', 'dagger', 'axe', 'club', 'lolly', 'cleaver', 'paddle', 'slab', 'fan'];
   kinds.forEach((k, i) => {
     const cv = document.createElement('canvas'); cv.width = cv.height = 256;
     const x = cv.getContext('2d');
-    const sc = [1, 0.5, 0.75, 1, 0.6, 0.9, 0.7, 0.55, 0.65, 1, 0.8, 0.85, 1, 0.6, 0.95, 0.75][i]; // 크기 다양하게
+    const sc = [1, 0.5, 0.75, 1, 0.6, 0.9, 0.7, 0.55, 1, 0.9, 1, 1, 0.65, 1, 0.8, 0.85, 1, 0.6, 0.95, 0.75, 0.6, 0.6, 0.6, 0.7][i]; // 크기 다양하게
     presetParts(k, pick(metal), pick(wood)).forEach(([pts, c]) => shapeDraw(x, pts.map(p => T(p[0] * sc, p[1] * sc)), c));
     const h = T(12 * sc, 0);
     const w = makeWeapon(cv, { x: h[0], y: h[1] }, '기본 무기', false);
-    w.id = 'preset' + i; w.created = i; w.uses = (16 - i) * 3;
+    w.id = 'preset' + i; w.created = i; w.uses = (24 - i) * 3;
     pool.push(w);
   });
 }
