@@ -933,7 +933,7 @@ function render() {
 let lastT = performance.now();
 function loop(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
-  if (SIM) { for (let i = 0; i < SIM; i++) update(dt); } else update(dt);
+  if (!SIM) update(dt);
   render();
   requestAnimationFrame(loop);
 }
@@ -1127,7 +1127,15 @@ $('btnEdDone').onclick = () => {
 // ===== 시작 =====
 $('menuChar').src = CHAR_SRC;
 genPresets();
-if (SIM) { show(null); document.getElementById('proto').textContent = `시뮬레이션 모드 ${SIM}배속 · 컴퓨터끼리 싸우는 중 · 전투 기록 저장`; }
+if (SIM) {
+  show(null); document.getElementById('proto').textContent = `시뮬레이션 모드 ${SIM}배속 · 컴퓨터끼리 싸우는 중 · 전투 기록 저장`;
+  // 창이 가려져도 계속 돌게: 화면 그리기와 상관없이 지난 실제 시간만큼 계산을 밀어붙임 (한 번에 최대 20초치)
+  let simLast = performance.now();
+  setInterval(() => {
+    const now = performance.now(); let gameSec = Math.min(20, (now - simLast) / 1000 * SIM); simLast = now;
+    const step = 1 / 30; while (gameSec > 0) { update(Math.min(step, gameSec)); gameSec -= step; }
+  }, 200);
+}
 // 방문 기록: 유입 경로, 기기, 화면, 언어, 처음인지. 나갈 때 머문 시간도 보냄
 (function () {
   let first = false; try { first = !localStorage.getItem('jj_seen'); localStorage.setItem('jj_seen', '1'); } catch (e) {}
