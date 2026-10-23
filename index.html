@@ -177,6 +177,7 @@ const HP_PER = 1.5;        // 초록 1개 = 최대 체력 +1.5
 // 컴퓨터 상대 시작 크기
 const BOT_START_BIG = 0.12, BOT_START_BIG_MAX = 150, BOT_START_MAX = 30;
 const GROW_R = 1.5;        // 파랑 구슬로 몸이 커지는 정도 (전에는 3)
+const MAX_SCALE = 6;       // 덩치 상한: 처음 크기의 6배
 const GROW_CD = 0.8;       // 커질수록 공격 간격이 길어지는 정도
 const GROW_SLOW = 0;       // 커질수록 실제 이동 속도가 줄어드는 정도 (0 = 크기와 상관없이 같은 속도)
 const GROW_HEAVY = 0.6;    // 커질수록 걷기·휘두르기 동작이 느릿느릿해지는 정도
@@ -530,7 +531,7 @@ function newEnt(name, weapon, bot) {
 function refresh(e) {
   const st = e.st, oldMax = e.maxhp;
   e.mass = st.atk + st.spd + st.hp + st.size;
-  e.r = R0 + Math.sqrt(st.size) * GROW_R;
+  e.r = Math.min(R0 * MAX_SCALE, R0 + Math.sqrt(st.size) * GROW_R); // 덩치 상한
   e.maxhp = 100 + st.hp * HP_PER; e.hp += e.maxhp - oldMax;
   if (e.hp > e.maxhp) e.hp = e.maxhp;
   if (e.mass > e.maxMass) e.maxMass = e.mass;
