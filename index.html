@@ -1329,8 +1329,9 @@ let tool = 'brush', color = '#111111', bsize = 6, undo = [], redo = [], drawing 
 const PALETTE = ['#111111', '#ffffff', '#9a9a9a', '#ff4d4d', '#ff9f43', '#ffd400', '#5bd15b', '#2fb5ff', '#3d5afe', '#b06cff', '#ff7ac8', '#a0663a'];
 $('palette').innerHTML = PALETTE.map(c => `<span class="pal" data-c="${c}" style="background:${c}"></span>`).join('');
 function setColor(c) { color = c; $('colorIn').value = c; document.querySelectorAll('.pal').forEach(p => p.classList.toggle('on', p.dataset.c === c)); }
-document.querySelectorAll('.pal').forEach(p => p.onclick = () => { setColor(p.dataset.c); setTool('brush'); });
-$('colorIn').oninput = e => { setColor(e.target.value); setTool('brush'); };
+const keepTool = () => { if (tool === 'eraser' || tool === 'picker' || tool === 'hand') setTool('brush'); };
+document.querySelectorAll('.pal').forEach(p => p.onclick = () => { setColor(p.dataset.c); keepTool(); });
+$('colorIn').oninput = e => { setColor(e.target.value); keepTool(); };
 function setTool(t) { tool = t; document.querySelectorAll('#toolBtns [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t)); }
 document.querySelectorAll('#toolBtns [data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
 $('bsize').oninput = e => { bsize = +e.target.value; $('bsizeTxt').textContent = bsize; };
