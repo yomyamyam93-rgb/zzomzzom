@@ -52,7 +52,8 @@ select{background:var(--card);color:var(--ink);border:2px solid #444;border-radi
     <h1>쫌쫌따리 트래픽</h1>
     <div>
       <select id="range"><option value="1">오늘</option><option value="7" selected>최근 7일</option><option value="14">최근 14일</option><option value="30">최근 30일</option><option value="90">최근 90일</option></select>
-      <label class="hint" style="margin-left:8px"><input type="checkbox" id="exMe" checked style="width:auto;margin:0 4px 0 0;vertical-align:middle">내 테스트 접속 빼기</label>
+      <label class="hint" style="margin-left:8px"><input type="checkbox" id="exMe" checked style="width:auto;margin:0 4px 0 0;vertical-align:middle">내 기기 빼기 (<span id="myCount">0</span>대)</label>
+      <button class="ghost" id="btnMyDev" style="font-size:13px;padding:6px 12px">이 기기는 내 기기</button>
       <button class="ghost" id="btnReload">새로고침</button>
       <button class="ghost" id="btnLogout">로그아웃</button>
     </div>
@@ -83,6 +84,19 @@ const API = ((window.JJ_CONFIG || {}).api || '/api');
 let rows = [];
 const api = (path, opt) => fetch(API + path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opt || {}));
 let myVid = ''; try { myVid = localStorage.getItem('jj_vid') || ''; } catch (e) {}
+let myDevices = []; // 서버에 등록한 내 기기들
+async function loadMyDevices() { const r = await api('/admin/mydevices'); if (r.ok) myDevices = await r.json(); updateMyDev(); }
+function updateMyDev() {
+  const has = myDevices.some(d => d.vid === myVid);
+  $('myCount').textContent = myDevices.length; $('btnMyDev').textContent = has ? '이 기기 등록됨 ✓ (해제)' : '이 기기는 내 기기';
+}
+$('btnMyDev').onclick = async () => {
+  if (!myVid) { alert('이 브라우저는 아직 게임 페이지를 연 적이 없어서 기기 번호가 없습니다. 쫌쫌따리.com을 한 번 열고 다시 눌러 주세요.'); return; }
+  const has = myDevices.some(d => d.vid === myVid);
+  const label = has ? '' : (/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) ? '폰' : 'PC') + ' ' + new Date().toLocaleDateString('ko-KR');
+  const r = await api('/admin/mydevices', { method: 'POST', body: JSON.stringify({ vid: myVid, label, remove: has }) });
+  if (r.ok) { myDevices = await r.json(); updateMyDev(); render(); }
+};
 
 $('btnLogin').onclick = async () => {
   $('err').textContent = '';
@@ -105,6 +119,7 @@ async function load() {
     const data = await r.json(); rows.push(...data); if (data.length < 1000) break;
   }
   $('login').style.display = 'none'; $('dash').style.display = '';
+  await loadMyDevices();
   render();
 }
 
@@ -134,7 +149,8 @@ const topN = (map, n) => Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0
 function render() {
   const days = +$('range').value, exMe = $('exMe').checked;
   const since = new Date(); since.setHours(0, 0, 0, 0); since.setDate(since.getDate() - (days - 1));
-  const all = rows.filter(r => !(exMe && myVid && r.vid === myVid) && r.vid !== 'server');
+  const mine = new Set(myDevices.map(d => d.vid)); if (myVid) mine.add(myVid);
+  const all = rows.filter(r => !(exMe && mine.has(r.vid)) && r.vid !== 'server');
   const inR = all.filter(r => new Date(r.created_at) >= since);
   const visits = inR.filter(r => r.type === 'visit'), leaves = inR.filter(r => r.type === 'leave'), starts = inR.filter(r => r.type === 'start');
   const fbs = all.filter(r => r.type === 'feedback');
