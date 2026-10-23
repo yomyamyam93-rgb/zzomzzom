@@ -892,14 +892,14 @@ function drawEnt(e) {
     ctx.fillStyle = '#444'; ctx.fillRect(e.x - bw / 2, top, bw, bh);
     ctx.fillStyle = e === me ? '#ff6b6b' : '#eee'; ctx.fillRect(e.x - bw / 2, top, bw * clamp(e.hp / e.maxhp, 0, 1), bh);
   }
-  if (e === me && me.alive) {
-    // 공격 방향 화살표: 몸 앞에서 무기가 닿는 끝까지. 기가 찰수록 또렷해짐
-    const reach = e.r * 0.5 + e.weapon.len * weaponScale(e), c = chargeOf(e), ax = Math.cos(e.ang), ay = Math.sin(e.ang);
-    const x0 = e.x + ax * (e.r * 0.5 + (reach - e.r * 0.5) * 0.55), y0 = e.y + ay * (e.r * 0.5 + (reach - e.r * 0.5) * 0.55), x1 = e.x + ax * (reach + e.r * 0.35), y1 = e.y + ay * (reach + e.r * 0.35), hd = Math.max(8 / cam.z, e.r * 0.3);
-    ctx.globalAlpha = 0.25 + 0.55 * c; ctx.strokeStyle = '#fff'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(2 / cam.z, e.r * 0.06);
-    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - ax * hd - ay * hd * 0.6, y1 - ay * hd + ax * hd * 0.6); ctx.moveTo(x1, y1); ctx.lineTo(x1 - ax * hd + ay * hd * 0.6, y1 - ay * hd - ax * hd * 0.6); ctx.stroke();
-    ctx.globalAlpha = 1;
+  if (e.alive) {
+    // 휘둘러지는 범위: 손 위치를 중심으로 무기가 닿는 부채꼴. 기가 찰수록 또렷해짐. 내 것은 더 진하게
+    const c = chargeOf(e), reach = e.weapon.len * weaponScale(e), half = e.weapon.half, [hx, hy] = handPos(e);
+    const mine = e === me, base = mine ? 0.10 : 0.04, k = mine ? 0.28 : 0.18;
+    const a0 = e.ang - half, a1 = e.ang + half;
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.arc(hx, hy, reach, a0, a1); ctx.closePath();
+    ctx.fillStyle = mine ? `rgba(255,255,255,${base + k * c * c})` : `rgba(255,120,120,${base + k * c * c})`; ctx.fill();
+    ctx.lineWidth = Math.max(1 / cam.z, e.r * 0.03); ctx.strokeStyle = mine ? `rgba(255,255,255,${0.25 + 0.6 * c})` : `rgba(255,120,120,${0.1 + 0.5 * c})`; ctx.stroke();
   }
   if (e === me && me.stam != null) {
     const ready = me.stam >= 1;
