@@ -480,7 +480,7 @@ function isReported(w) { return reported.includes(w.id); }
 function report(w) { if (!isReported(w)) { reported.push(w.id); lsSet('jj_reported', reported); } }
 function botWeapon() { const ok = pool.filter(w => !isReported(w)); return pick(ok.length ? ok : pool); }
 function thumb(w, size) {
-  const c = document.createElement('canvas'); c.width = c.height = size;
+  const c = document.createElement('canvas'); c.width = c.height = size; if (w.wid) c.dataset.wid = w.wid;
   c.getContext('2d').drawImage(w.cv, 0, 0, size, size); return c;
 }
 
@@ -1042,7 +1042,8 @@ const net = { ws: null, id: 0, ents: new Map(), orbs: new Map(), orbArr: [], wea
 function weaponFromDef(d) {
   const cv = document.createElement('canvas'); cv.width = cv.height = 256;
   const w = Object.assign({ cv, dmg: BASE_DMG, uses: d.uses || 0, created: Date.now(), wid: d.id }, d);
-  const im = new Image(); im.onload = () => { cv.getContext('2d').drawImage(im, 0, 0); w.art = null; }; im.src = d.png;
+  const im = new Image(); im.onload = () => { cv.getContext('2d').drawImage(im, 0, 0); w.art = null; w.loaded = true; document.querySelectorAll(`canvas[data-wid="${w.id}"]`).forEach(c => c.getContext('2d').drawImage(cv, 0, 0, c.width, c.height)); }; im.src = d.png;
+  w.fromServer = true;
   return w;
 }
 function netSend(obj) { if (net.ws && net.ws.readyState === 1) net.ws.send(JSON.stringify(obj)); }
@@ -1201,7 +1202,7 @@ let sortMode = 'new';
 function renderPicker() {
   const box = $('pickCards'); box.innerHTML = '';
   const list = pool.filter(w => !isReported(w)).slice().sort((a, b) => sortMode === 'new' ? b.created - a.created : b.uses - a.uses);
-  list.forEach(w => box.appendChild(cardEl(w, w.user ? '이 기기에서 그림' : '', startGame)));
+  list.forEach(w => box.appendChild(cardEl(w, w.fromServer ? '남이 그림' : w.user ? '내가 그림' : '', startGame)));
   $('sortNew').classList.toggle('on', sortMode === 'new'); $('sortUsed').classList.toggle('on', sortMode === 'used');
 }
 function openPicker() { renderPicker(); show('picker'); if (NET) netConnect(() => netSend({ t: 'list' })); }
