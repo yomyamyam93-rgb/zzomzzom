@@ -580,8 +580,15 @@ function initWorld() {
 }
 
 // ===== 전투 =====
-function startSwing(e) { e.swingDir = Math.cos(e.ang) >= 0 ? 1 : -1; e.swingFrom = e.restOff == null ? -e.swingDir * e.weapon.half * 0.7 : e.restOff; e.swingT = 0; e.hitSet = new Set(); e.cdT = cdOf(e); e.fxDone = false; e.prevA = null; }
+function startSwing(e) { e.swingDir = -(e.swingDir || 1); e.swingFrom = e.restOff == null ? -e.swingDir * e.weapon.half * 0.7 : e.restOff; e.swingT = 0; e.hitSet = new Set(); e.cdT = cdOf(e); e.fxDone = false; e.prevA = null; }
 let fx = [];
+function swingFx(e) {
+  e.fxDone = true;
+  const k = e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7);
+  fx.push({ type: 'sw', e, a0: e.ang - e.swingDir * e.weapon.half, a1: e.ang + e.swingDir * e.weapon.half, t: 0, T: 0.42, k });
+  const [hx, hy] = handPos(e), R = e.weapon.len * weaponScale(e) + e.r * 0.5, a = e.ang + e.swingDir * e.weapon.half * 0.6;
+  for (let i = 0; i < 6; i++) parts.push({ x: hx + Math.cos(a) * R, y: hy + Math.sin(a) * R, vx: Math.cos(a + rand(-0.6, 0.6)) * rand(120, 320), vy: Math.sin(a + rand(-0.6, 0.6)) * rand(120, 320), t: rand(0.15, 0.3), c: '#fff', s: rand(2, 4) * scaleOf(e) });
+}
 const killLog = []; // [이긴 무기 무게,길이,두께,먹은양, 진 무기 무게,길이,두께,먹은양, 사람여부]
 setInterval(() => { if (killLog.length) { logEvent('kills', { k: killLog.splice(0, 300) }); } }, 30000);
 function doHits(e) {
@@ -710,17 +717,12 @@ function update(dt) {
     e.cdT -= dt;
     if (e.swingT >= 0) {
       e.swingT += dt / (e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7)); // 무거운 무기·큰 몸은 동작도 느림
-      if (e.swingT >= WINDUP && !e.fxDone) {
-        e.fxDone = true; e.prevA = null;
-        fx.push({ type: 'sw', e, a0: e.ang - e.swingDir * e.weapon.half, a1: e.ang + e.swingDir * e.weapon.half, t: 0, T: 0.45, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
-      }
+      if (e.swingT >= WINDUP && !e.fxDone) { e.prevA = null; swingFx(e); }
       if (e.swingT >= WINDUP && e.swingT < WINDUP + SWING + 0.03) doHits(e);
       if (e.swingT >= WINDUP + SWING + RECOVER) { e.swingT = -1; e.restOff = e.swingDir * e.weapon.half * 0.7; } // 아래쪽에서 시작해 대기 위치로 돌아감
     } else {
       // 대기 위치(위쪽)로 스르륵. 바라보는 방향이 바뀌면 반대쪽 위로 넘어감
-      const want = -(Math.cos(e.ang) >= 0 ? 1 : -1) * e.weapon.half * 0.7;
-      if (e.restOff == null) e.restOff = want;
-      e.restOff += (want - e.restOff) * Math.min(1, dt * REST_FOLLOW);
+      if (e.restOff == null) e.restOff = -e.weapon.half * 0.7;
       if (e.cdT <= 0) startSwing(e);
     }
     if (e.flash > 0) e.flash -= dt;
@@ -828,18 +830,19 @@ function drawFx(f) {
     const e = f.e; if (!e.alive) return;
     const [hx, hy] = handPos(e), R = e.weapon.len * weaponScale(e) + e.r * 0.5;
     const grow = Math.min(1, f.t / SWING), fade = Math.max(0, (f.t - SWING) / (f.T - SWING));
-    const head = f.a0 + (f.a1 - f.a0) * grow, ccw = f.a1 < f.a0;
-    if (Math.abs(head - f.a0) < 0.03) return;
-    // 바닥에 남는 쓸린 자국: 부채꼴 전체. 휘두를 땐 밝고, 끝나면 서서히 꺼짐
-    const g = ctx.createRadialGradient(hx, hy, R * 0.15, hx, hy, R);
-    g.addColorStop(0, `rgba(255,255,255,${0.02 * (1 - fade)})`); g.addColorStop(0.8, `rgba(255,255,255,${0.16 * (1 - fade)})`); g.addColorStop(1, `rgba(255,255,255,${0.30 * (1 - fade)})`);
-    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.arc(hx, hy, R, f.a0, head, ccw); ctx.closePath();
-    ctx.fillStyle = g; ctx.fill();
-    // 바깥 테두리와 날 끝 선
-    ctx.globalAlpha = (1 - fade) * 0.9; ctx.strokeStyle = '#fff'; ctx.lineCap = 'round';
-    ctx.lineWidth = lw * 1.2; ctx.beginPath(); ctx.arc(hx, hy, R, f.a0, head, ccw); ctx.stroke();
-    if (fade < 0.3) { ctx.lineWidth = lw * 1.6; ctx.globalAlpha = (1 - fade / 0.3) * 0.9; ctx.beginPath(); ctx.moveTo(hx + Math.cos(head) * R * 0.2, hy + Math.sin(head) * R * 0.2); ctx.lineTo(hx + Math.cos(head) * R, hy + Math.sin(head) * R); ctx.stroke(); }
-    ctx.globalAlpha = 1;
+    const head = f.a0 + (f.a1 - f.a0) * grow, span = (f.a1 - f.a0) * grow;
+    if (Math.abs(span) < 0.03) return;
+    const N = 14, band = R * 0.42, life = 1 - fade;
+    ctx.save(); ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 14 / cam.z * life;
+    for (let i = 0; i < N; i++) { // 꼬리(0) → 날 끝(1)
+      const u0 = i / N, u1 = (i + 1) / N, b0 = f.a0 + span * u0, b1 = f.a0 + span * u1;
+      const w0 = band * u0 * u0, w1 = band * u1 * u1, alpha = (0.08 + 0.85 * u1 * u1) * life;
+      ctx.beginPath(); ctx.arc(hx, hy, R, b0, b1, span < 0); ctx.arc(hx, hy, R - (w1 + w0) / 2, b1, b0, span > 0); ctx.closePath();
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fill();
+    }
+    ctx.restore();
+    // 날 끝 밝은 선
+    if (fade < 0.4) { ctx.globalAlpha = (1 - fade / 0.4) * 0.95; ctx.strokeStyle = '#fff'; ctx.lineCap = 'round'; ctx.lineWidth = lw * 1.8; ctx.beginPath(); ctx.moveTo(hx + Math.cos(head) * (R - band), hy + Math.sin(head) * (R - band)); ctx.lineTo(hx + Math.cos(head) * R * 1.04, hy + Math.sin(head) * R * 1.04); ctx.stroke(); ctx.globalAlpha = 1; }
   } else {
     const u = f.t / f.T; ctx.lineWidth = lw; ctx.globalAlpha = 1 - u;
     for (let i = 0; i < 7; i++) {
@@ -1109,7 +1112,7 @@ function onSnap(m) {
     const e = net.ents.get(id); if (!e) continue;
     if (e.fresh) { e.x = e.x0 = x; e.y = e.y0 = y; e.ang = e.ang0 = ang; e.fresh = false; } else { e.x0 = e.x; e.y0 = e.y; e.ang0 = e.ang; }
     e.tx = x; e.ty = y; e.tang = ang; e.t1 = now; e.r = r;
-    if (e.swingT < WINDUP && swingT >= WINDUP && e.weapon) fx.push({ type: 'sw', e, a0: ang - swingDir * e.weapon.half, a1: ang + swingDir * e.weapon.half, t: 0, T: 0.45, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
+    if (swingT < 0) e.fxDone = false; else if (swingT >= WINDUP && !e.fxDone && e.weapon) { e.swingDir = swingDir; e.ang = ang; swingFx(e); }
     e.swingT = swingT; e.swingDir = swingDir; e.restOff = restOff; e.swingFrom = swingFrom; e.boosting = !!boosting; e.mass = mass; e.kills = kills; e.safe = safe; e.charge = charge; e.king = !!king;
     if (mass > e.maxMass) e.maxMass = mass;
     if (id === net.id) { me = e; e.baseWeapon = net.myWeapon || e.weapon; if (m.you) { e.stam = m.you.stam; Object.assign(e.st, m.you.st); e.rank = m.you.rank; } }
@@ -1139,7 +1142,7 @@ function netUpdate(dt) {
   const now = performance.now();
   for (const e of net.ents.values()) {
     if (e.t1) { const a = Math.min(1, (now - e.t1) / NET_LERP); e.x = e.x0 + (e.tx - e.x0) * a; e.y = e.y0 + (e.ty - e.y0) * a; e.ang = e.ang0 + angDiff(e.ang0, e.tang) * a; }
-    if (e.swingT >= 0) { e.swingT += dt / (e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7)); if (e.swingT >= WINDUP + SWING + RECOVER) { e.swingT = -1; e.restOff = e.swingDir * e.weapon.half * 0.7; } }
+    if (e.swingT >= 0) { e.swingT += dt / (e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7)); if (e.swingT >= WINDUP && !e.fxDone) swingFx(e); if (e.swingT >= WINDUP + SWING + RECOVER) { e.swingT = -1; e.fxDone = false; e.restOff = e.swingDir * e.weapon.half * 0.7; } }
     e.moving = Math.hypot(e.tx - e.x0, e.ty - e.y0) > 0.5;
     if (e.moving) e.walkT = (e.walkT || 0) + dt / Math.pow(scaleOf(e), GROW_HEAVY);
     if (e.flash > 0) e.flash -= dt;
