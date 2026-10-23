@@ -938,7 +938,7 @@ function render() {
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   for (const ob of orbs) if (vis(ob.x, ob.y, 10)) { ctx.beginPath(); ctx.arc(ob.x, ob.y, ob.r, 0, 6.29); ctx.fillStyle = ob.c; ctx.fill(); }
   const live = ents.filter(e => e.alive && vis(e.x, e.y, e.r * 3 + e.weapon.len * weaponScale(e))).sort((a, b) => (a.y + a.r) - (b.y + b.r)); // 아래쪽이 앞에
-  let king = null; for (const e of ents) if (e.alive && (!king || e.mass > king.mass)) king = e;
+  let king = null; if (NET) king = ents.find(e => e.alive && e.king) || null; else for (const e of ents) if (e.alive && (!king || e.mass > king.mass)) king = e;
   for (const e of live) drawEnt(e);
   if (king && king.mass > 20 && live.includes(king)) drawCrown(king);
   for (const f of fx) drawFx(f);
@@ -1051,7 +1051,7 @@ function unpackSnap(buf) { // 서버 packSnap 과 같은 순서로 읽음
   if (u8() !== 1) return { ents: [] };
   const m = { ents: [], gone: [], orbAdd: [], orbDel: [], fx: [] };
   m.n = u16();
-  let n = u16(); while (n--) { const id = u16(), x = i16(), y = i16(), ang = i16() / 1000, r = u16() / 10, swingT = i16() / 1000, dir = i8(), rest = i16() / 1000, from = i16() / 1000, flags = u8(), mass = u16(), kills = u16(), charge = u8() / 100; m.ents.push([id, x, y, ang, r, swingT, dir, rest, from, flags & 1, mass, kills, (flags & 2) ? 1 : 0, charge]); }
+  let n = u16(); while (n--) { const id = u16(), x = i16(), y = i16(), ang = i16() / 1000, r = u16() / 10, swingT = i16() / 1000, dir = i8(), rest = i16() / 1000, from = i16() / 1000, flags = u8(), mass = u16(), kills = u16(), charge = u8() / 100; m.ents.push([id, x, y, ang, r, swingT, dir, rest, from, flags & 1, mass, kills, (flags & 2) ? 1 : 0, charge, (flags & 4) ? 1 : 0]); }
   n = u16(); while (n--) m.gone.push(u16());
   m.you = { stam: u8() / 100, st: { spd: u16(), size: u16() }, rank: u16() };
   n = u16(); while (n--) m.orbAdd.push([u32(), i16(), i16(), u8(), u8()]);
@@ -1103,12 +1103,12 @@ function onSnap(m) {
   }
   if (m.gone) for (const id of m.gone) if (id !== net.id) net.ents.delete(id);
   for (const row of m.ents) {
-    const [id, x, y, ang, r, swingT, swingDir, restOff, swingFrom, boosting, mass, kills, safe, charge] = row;
+    const [id, x, y, ang, r, swingT, swingDir, restOff, swingFrom, boosting, mass, kills, safe, charge, king] = row;
     const e = net.ents.get(id); if (!e) continue;
     if (e.fresh) { e.x = e.x0 = x; e.y = e.y0 = y; e.ang = e.ang0 = ang; e.fresh = false; } else { e.x0 = e.x; e.y0 = e.y; e.ang0 = e.ang; }
     e.tx = x; e.ty = y; e.tang = ang; e.t1 = now; e.r = r;
     if (e.swingT < WINDUP && swingT >= WINDUP && e.weapon) fx.push({ type: 'sw', e, a0: ang - swingDir * e.weapon.half, a1: ang + swingDir * e.weapon.half, t: 0, T: 0.34, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
-    e.swingT = swingT; e.swingDir = swingDir; e.restOff = restOff; e.swingFrom = swingFrom; e.boosting = !!boosting; e.mass = mass; e.kills = kills; e.safe = safe; e.charge = charge;
+    e.swingT = swingT; e.swingDir = swingDir; e.restOff = restOff; e.swingFrom = swingFrom; e.boosting = !!boosting; e.mass = mass; e.kills = kills; e.safe = safe; e.charge = charge; e.king = !!king;
     if (mass > e.maxMass) e.maxMass = mass;
     if (id === net.id) { me = e; e.baseWeapon = net.myWeapon || e.weapon; if (m.you) { e.stam = m.you.stam; Object.assign(e.st, m.you.st); e.rank = m.you.rank; } }
   }
