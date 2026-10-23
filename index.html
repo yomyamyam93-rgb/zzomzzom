@@ -1039,15 +1039,35 @@ function weaponFromDef(d) {
   return w;
 }
 function netSend(obj) { if (net.ws && net.ws.readyState === 1) net.ws.send(JSON.stringify(obj)); }
+function netSendInput(ang, moving, boost) { // [u8 2][i16 ang*1000][u8 flags]
+  if (!net.ws || net.ws.readyState !== 1) return;
+  const b = new DataView(new ArrayBuffer(4)); b.setUint8(0, 2); b.setInt16(1, Math.round(ang * 1000), true); b.setUint8(3, (moving ? 1 : 0) | (boost ? 2 : 0)); net.ws.send(b.buffer);
+}
+function unpackSnap(buf) { // 서버 packSnap 과 같은 순서로 읽음
+  const d = new DataView(buf); let o = 0;
+  const u8 = () => d.getUint8(o++), i8 = () => d.getInt8(o++), u16 = () => { const v = d.getUint16(o, true); o += 2; return v; }, i16 = () => { const v = d.getInt16(o, true); o += 2; return v; }, u32 = () => { const v = d.getUint32(o, true); o += 4; return v; };
+  if (u8() !== 1) return { ents: [] };
+  const m = { ents: [], gone: [], orbAdd: [], orbDel: [], fx: [] };
+  m.n = u16();
+  let n = u16(); while (n--) { const id = u16(), x = i16(), y = i16(), ang = i16() / 1000, r = u16() / 10, swingT = i16() / 1000, dir = i8(), rest = i16() / 1000, from = i16() / 1000, flags = u8(), mass = u16(), kills = u16(); m.ents.push([id, x, y, ang, r, swingT, dir, rest, from, flags & 1, mass, kills, (flags & 2) ? 1 : 0]); }
+  n = u16(); while (n--) m.gone.push(u16());
+  m.you = { stam: u8() / 100, st: { spd: u16(), size: u16() } };
+  n = u16(); while (n--) m.orbAdd.push([u32(), i16(), i16(), u8(), u8()]);
+  n = u16(); while (n--) m.orbDel.push(u32());
+  n = u8(); while (n--) m.fx.push([u8(), i16(), i16(), u16(), u8()]);
+  return m;
+}
 function netConnect(onOpen) {
   if (net.ws && net.ws.readyState === 1) return onOpen();
   if (net.ws && net.ws.readyState === 0) { net.ws.addEventListener('open', onOpen, { once: true }); return; }
   const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+  ws.binaryType = 'arraybuffer';
   net.ws = ws; ws.onopen = onOpen;
   ws.onmessage = ev => {
+    if (ev.data instanceof ArrayBuffer) { onSnap(unpackSnap(ev.data)); return; }
     const m = JSON.parse(ev.data);
-    if (m.t === 'snap') onSnap(m);
-    else if (m.t === 'init') { net.id = m.id; if (net.myWeapon && m.me) net.myWeapon.wid = m.me.wid; }
+    if (m.t === 'meta') onSnap(Object.assign({ ents: [] }, m)); // 이름·무기 그림·순위 (가끔)
+    else if (m.t === 'init') { net.id = m.id; net.room = m.room; if (net.myWeapon && m.me) net.myWeapon.wid = m.me.wid; }
     else if (m.t === 'dead') onDead(m);
     else if (m.t === 'list') onList(m);
     else if (m.t === 'err') { alert(m.msg); mode = 'menu'; show('menu'); }
@@ -1088,7 +1108,7 @@ function onSnap(m) {
   }
   if (m.orbAdd) for (const [id, x, y, v, k] of m.orbAdd) { const kind = k ? 'size' : 'spd'; net.orbs.set(id, { id, x, y, v, kind, c: KIND_COLOR[kind], r: 2.5 + Math.sqrt(v) * 2.8, ph: rand(0, 6.28) }); }
   if (m.orbDel) for (const id of m.orbDel) net.orbs.delete(id);
-  if (m.orbAdd || m.orbDel) net.orbArr = [...net.orbs.values()];
+  if ((m.orbAdd && m.orbAdd.length) || (m.orbDel && m.orbDel.length)) net.orbArr = [...net.orbs.values()];
   if (m.top) net.top = m.top; if (m.n) net.n = m.n;
   if (m.fx) for (const f of m.fx) {
     if (f[0] === 0) { fx.push({ type: 'hit', x: f[1], y: f[2], s: f[3], t: 0, T: 0.22, rot: rand(0, 1) }); if (f[4]) cam.shake = Math.max(cam.shake || 0, f[4] === 1 ? 7 : 4); }
@@ -1131,7 +1151,7 @@ function netUpdate(dt) {
     if (touch.dir != null) { tgt = touch.dir; moving = true; }
     else { const [wx, wy] = screenToWorld(mouse.x, mouse.y); moving = d2(wx, wy, me.x, me.y) > (me.r * 0.6) ** 2; tgt = Math.atan2(wy - me.y, wx - me.x); }
     net.inAcc += dt;
-    if (net.inAcc >= 0.05 || me.boost) { net.inAcc = 0; netSend({ t: 'in', a: +tgt.toFixed(3), m: moving ? 1 : 0, b: me.boost ? 1 : 0 }); me.boost = false; }
+    if (net.inAcc >= 0.05 || me.boost) { net.inAcc = 0; netSendInput(tgt, moving, me.boost); me.boost = false; }
     if (track) track.time += dt;
   }
   // 구슬이 빨려 들어오는 연출 (먹히는 건 서버가 정함)
