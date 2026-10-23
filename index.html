@@ -201,7 +201,7 @@ const REPORT_LIMIT = 5;   // 목록에서 내려가는 신고 수 (서버 붙으
 
 const $ = id => document.getElementById(id);
 const NET = location.protocol !== 'file:' && !/[?&](sim|offline)/.test(location.search); // 온라인(서버 세계) 모드
-const NET_LERP = 60; // 서버 위치를 따라가는 부드러움(ms)
+const NET_LERP = 40; // 서버 위치를 따라가는 부드러움(ms)
 const SIM = /[?&]sim=(\d+)/.test(location.search) ? Math.max(1, Math.min(8, +RegExp.$1)) : 0; // ?sim=3 이면 3배속
 // ===== 통계·한마디 저장 (config.js에 주소와 키가 있을 때만 동작) =====
 const CFG = (typeof window.JJ_CONFIG === 'object' && window.JJ_CONFIG) || {};
@@ -788,6 +788,7 @@ function drawOutlined(spr, x, y, w, h, unit) {
 }
 function chargeOf(e) {
   if (e.swingT >= 0) return e.swingT < WINDUP ? 1 : 0;
+  if (e.charge != null) return e.charge;
   return clamp(1 - Math.max(0, e.cdT) / cdOf(e), 0, 1);
 }
 function drawWeapon(e, A) {
@@ -1050,7 +1051,7 @@ function unpackSnap(buf) { // 서버 packSnap 과 같은 순서로 읽음
   if (u8() !== 1) return { ents: [] };
   const m = { ents: [], gone: [], orbAdd: [], orbDel: [], fx: [] };
   m.n = u16();
-  let n = u16(); while (n--) { const id = u16(), x = i16(), y = i16(), ang = i16() / 1000, r = u16() / 10, swingT = i16() / 1000, dir = i8(), rest = i16() / 1000, from = i16() / 1000, flags = u8(), mass = u16(), kills = u16(); m.ents.push([id, x, y, ang, r, swingT, dir, rest, from, flags & 1, mass, kills, (flags & 2) ? 1 : 0]); }
+  let n = u16(); while (n--) { const id = u16(), x = i16(), y = i16(), ang = i16() / 1000, r = u16() / 10, swingT = i16() / 1000, dir = i8(), rest = i16() / 1000, from = i16() / 1000, flags = u8(), mass = u16(), kills = u16(), charge = u8() / 100; m.ents.push([id, x, y, ang, r, swingT, dir, rest, from, flags & 1, mass, kills, (flags & 2) ? 1 : 0, charge]); }
   n = u16(); while (n--) m.gone.push(u16());
   m.you = { stam: u8() / 100, st: { spd: u16(), size: u16() } };
   n = u16(); while (n--) m.orbAdd.push([u32(), i16(), i16(), u8(), u8()]);
@@ -1102,12 +1103,12 @@ function onSnap(m) {
   }
   if (m.gone) for (const id of m.gone) if (id !== net.id) net.ents.delete(id);
   for (const row of m.ents) {
-    const [id, x, y, ang, r, swingT, swingDir, restOff, swingFrom, boosting, mass, kills, safe] = row;
+    const [id, x, y, ang, r, swingT, swingDir, restOff, swingFrom, boosting, mass, kills, safe, charge] = row;
     const e = net.ents.get(id); if (!e) continue;
     if (e.fresh) { e.x = e.x0 = x; e.y = e.y0 = y; e.ang = e.ang0 = ang; e.fresh = false; } else { e.x0 = e.x; e.y0 = e.y; e.ang0 = e.ang; }
     e.tx = x; e.ty = y; e.tang = ang; e.t1 = now; e.r = r;
     if (e.swingT < WINDUP && swingT >= WINDUP && e.weapon) fx.push({ type: 'sw', e, a0: ang - swingDir * e.weapon.half, a1: ang + swingDir * e.weapon.half, t: 0, T: 0.34, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
-    e.swingT = swingT; e.swingDir = swingDir; e.restOff = restOff; e.swingFrom = swingFrom; e.boosting = !!boosting; e.mass = mass; e.kills = kills; e.safe = safe;
+    e.swingT = swingT; e.swingDir = swingDir; e.restOff = restOff; e.swingFrom = swingFrom; e.boosting = !!boosting; e.mass = mass; e.kills = kills; e.safe = safe; e.charge = charge;
     if (mass > e.maxMass) e.maxMass = mass;
     if (id === net.id) { me = e; e.baseWeapon = net.myWeapon || e.weapon; if (m.you) { e.stam = m.you.stam; Object.assign(e.st, m.you.st); } }
   }
@@ -1136,6 +1137,7 @@ function netUpdate(dt) {
   const now = performance.now();
   for (const e of net.ents.values()) {
     if (e.t1) { const a = Math.min(1, (now - e.t1) / NET_LERP); e.x = e.x0 + (e.tx - e.x0) * a; e.y = e.y0 + (e.ty - e.y0) * a; e.ang = e.ang0 + angDiff(e.ang0, e.tang) * a; }
+    if (e.swingT >= 0) { e.swingT += dt / (e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7)); if (e.swingT >= WINDUP + SWING + RECOVER) { e.swingT = -1; e.restOff = e.swingDir * e.weapon.half * 0.7; } }
     e.moving = Math.hypot(e.tx - e.x0, e.ty - e.y0) > 0.5;
     if (e.moving) e.walkT = (e.walkT || 0) + dt / Math.pow(scaleOf(e), GROW_HEAVY);
     if (e.flash > 0) e.flash -= dt;
