@@ -65,7 +65,7 @@ textarea{background:var(--pill)!important;color:var(--ink)!important;border:2px 
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="proto">쫌쫌따리 시험판 · 다른 399명은 컴퓨터</div>
+<div id="proto">쫌쫌따리 · 온라인</div>
 
 <!-- 시작 화면 -->
 <div class="overlay show" id="menu"><div class="box">
@@ -199,6 +199,8 @@ const WINDUP = 0.16, SWING = 0.1, RECOVER = 0.2; // 공격 동작: 뒤로 젖힘
 const REPORT_LIMIT = 5;   // 목록에서 내려가는 신고 수 (서버 붙으면 사용)
 
 const $ = id => document.getElementById(id);
+const NET = location.protocol !== 'file:' && !/[?&](sim|offline)/.test(location.search); // 온라인(서버 세계) 모드
+const NET_LERP = 70; // 서버 위치를 따라가는 부드러움(ms)
 const SIM = /[?&]sim=(\d+)/.test(location.search) ? Math.max(1, Math.min(8, +RegExp.$1)) : 0; // ?sim=3 이면 3배속
 // ===== 통계·한마디 저장 (config.js에 주소와 키가 있을 때만 동작) =====
 const CFG = (typeof window.JJ_CONFIG === 'object' && window.JJ_CONFIG) || {};
@@ -948,14 +950,14 @@ function render() {
     const dx = touch.cx - touch.sx, dy = touch.cy - touch.sy, l = Math.hypot(dx, dy), k = l > 34 ? 34 / l : 1;
     ctx.beginPath(); ctx.arc(touch.sx + dx * k, touch.sy + dy * k, 14, 0, 6.29); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fill();
   }
-  const top = ents.filter(e => e.alive).sort((a, b) => b.mass - a.mass).slice(0, 10);
+  const top = NET ? net.top.map(([name, mass]) => ({ name, mass, isMe: !!me && name === me.name })) : ents.filter(e => e.alive).sort((a, b) => b.mass - a.mass).slice(0, 10).map(e => ({ name: e.name, mass: e.mass, isMe: e === me }));
   ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 1;
   ctx.textAlign = 'left'; ctx.font = "15px 'Jua','Malgun Gothic',sans-serif"; ctx.fillStyle = '#eee';
   ctx.fillText('순위', VW - 190, 28);
   ctx.font = "14px 'Jua','Malgun Gothic',sans-serif";
-  top.forEach((e, i) => { ctx.fillStyle = e === me ? '#ff6b6b' : '#ccc'; ctx.fillText(`${i + 1}. ${e.name}`, VW - 190, 50 + i * 20); ctx.textAlign = 'right'; ctx.fillText(Math.round(e.mass), VW - 16, 50 + i * 20); ctx.textAlign = 'left'; });
+  top.forEach((e, i) => { ctx.fillStyle = e.isMe ? '#ff6b6b' : '#ccc'; ctx.fillText(`${i + 1}. ${e.name}`, VW - 190, 50 + i * 20); ctx.textAlign = 'right'; ctx.fillText(Math.round(e.mass), VW - 16, 50 + i * 20); ctx.textAlign = 'left'; });
   ctx.fillStyle = '#999'; ctx.font = "14px 'Malgun Gothic',sans-serif";
-  ctx.fillText(`접속 ${ents.filter(e => e.alive).length}/${MAX_PLAYERS}`, 14, 26);
+  ctx.fillText(NET ? `접속 ${net.n}/${MAX_PLAYERS}` : `접속 ${ents.filter(e => e.alive).length}/${MAX_PLAYERS}`, 14, 26);
   if (me && me.alive) {
     ctx.font = "bold 20px 'Malgun Gothic',sans-serif"; ctx.fillStyle = '#fff';
     ctx.fillText(`먹은 양 ${Math.round(me.mass)}   처치 ${me.kills}`, 14, VH - 34);
@@ -974,7 +976,7 @@ function render() {
 let lastT = performance.now();
 function loop(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
-  if (!SIM) update(dt);
+  if (NET) netUpdate(dt); else if (!SIM) update(dt);
   render();
   requestAnimationFrame(loop);
 }
@@ -1014,7 +1016,7 @@ addEventListener('contextmenu', e => e.preventDefault());
 // ===== 화면 전환 =====
 function show(id) { ['menu', 'editor', 'picker', 'result'].forEach(o => $(o).classList.toggle('show', o === id)); if (id === 'menu') playIntro(); }
 function nick() { return ($('nick').value || '').trim() || '쫌쫌따리'; }
-function startGame(w) {
+function startLocalGame(w) {
   if (!w) return;
   w.uses++; if (w.user) saveUserPool();
   lastWeapon = w; myBaseWeapon = w;
@@ -1027,6 +1029,127 @@ function startGame(w) {
   cam.x = me.x; cam.y = me.y;
   track = { killer: null, killerName: '', victims: [], seen: [], tick: 0, time: 0 };
   mode = 'play'; show(null);
+}
+// ===== 온라인 =====
+const net = { ws: null, id: 0, ents: new Map(), orbs: new Map(), orbArr: [], weapons: new Map(), top: [], n: 0, inAcc: 0, myWeapon: null };
+function weaponFromDef(d) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const w = Object.assign({ cv, dmg: BASE_DMG, uses: d.uses || 0, created: Date.now(), wid: d.id }, d);
+  const im = new Image(); im.onload = () => { cv.getContext('2d').drawImage(im, 0, 0); w.art = null; }; im.src = d.png;
+  return w;
+}
+function netSend(obj) { if (net.ws && net.ws.readyState === 1) net.ws.send(JSON.stringify(obj)); }
+function netConnect(onOpen) {
+  if (net.ws && net.ws.readyState === 1) return onOpen();
+  if (net.ws && net.ws.readyState === 0) { net.ws.addEventListener('open', onOpen, { once: true }); return; }
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+  net.ws = ws; ws.onopen = onOpen;
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.t === 'snap') onSnap(m);
+    else if (m.t === 'init') { net.id = m.id; if (net.myWeapon && m.me) net.myWeapon.wid = m.me.wid; }
+    else if (m.t === 'dead') onDead(m);
+    else if (m.t === 'list') onList(m);
+    else if (m.t === 'err') { alert(m.msg); mode = 'menu'; show('menu'); }
+  };
+  ws.onclose = () => { net.ws = null; if (mode === 'play') { mode = 'menu'; $('lastLine').textContent = '서버와 연결이 끊겼습니다. 다시 눌러 주세요.'; show('menu'); } };
+}
+function startGame(w) {
+  if (!NET) return startLocalGame(w);
+  if (!w) return;
+  w.uses++; if (w.user && !w.wid) saveUserPool();
+  lastWeapon = w; myBaseWeapon = w; net.myWeapon = w;
+  me = null; net.ents.clear(); net.orbs.clear(); net.orbArr = []; ents = []; fx = []; parts = [];
+  track = { killer: null, killerName: '', victims: [], seen: [], tick: 0, time: 0 };
+  window._plays = (window._plays || 0) + 1;
+  logEvent('start', { nick: nick(), weapon: w.name, weaponUser: w.user, online: true });
+  mode = 'play'; show(null);
+  netConnect(() => netSend(w.wid ? { t: 'join', nick: nick(), wid: w.wid } : { t: 'join', nick: nick(), weapon: { png: w.cv.toDataURL('image/png'), hand: w.hand } }));
+}
+function onSnap(m) {
+  const now = performance.now();
+  if (m.weapons) for (const d of m.weapons) if (!net.weapons.has(d.id)) net.weapons.set(d.id, weaponFromDef(d));
+  if (m.meta) for (const [id, name, wid, bot] of m.meta) {
+    if (net.ents.has(id)) continue;
+    const w = net.weapons.get(wid) || pool[0];
+    net.ents.set(id, { id, name, bot: !!bot, weapon: w, baseWeapon: w, x: 0, y: 0, ang: 0, r: R0, swingT: -1, swingDir: 1, restOff: null, swingFrom: null, boosting: false, mass: 0, kills: 0, alive: true, st: { atk: 0, spd: 0, hp: 0, size: 0 }, stam: 1, flash: 0, moving: true, t1: 0, fresh: true, maxMass: 0 });
+    if (track && id !== net.id && w && !track.seen.includes(w)) track.seen.push(w);
+  }
+  if (m.gone) for (const id of m.gone) if (id !== net.id) net.ents.delete(id);
+  for (const row of m.ents) {
+    const [id, x, y, ang, r, swingT, swingDir, restOff, swingFrom, boosting, mass, kills, safe] = row;
+    const e = net.ents.get(id); if (!e) continue;
+    if (e.fresh) { e.x = e.x0 = x; e.y = e.y0 = y; e.ang = e.ang0 = ang; e.fresh = false; } else { e.x0 = e.x; e.y0 = e.y; e.ang0 = e.ang; }
+    e.tx = x; e.ty = y; e.tang = ang; e.t1 = now; e.r = r;
+    if (e.swingT < WINDUP && swingT >= WINDUP && e.weapon) fx.push({ type: 'sw', e, a0: ang - swingDir * e.weapon.half, a1: ang + swingDir * e.weapon.half, t: 0, T: 0.34, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
+    e.swingT = swingT; e.swingDir = swingDir; e.restOff = restOff; e.swingFrom = swingFrom; e.boosting = !!boosting; e.mass = mass; e.kills = kills; e.safe = safe;
+    if (mass > e.maxMass) e.maxMass = mass;
+    if (id === net.id) { me = e; e.baseWeapon = net.myWeapon || e.weapon; if (m.you) { e.stam = m.you.stam; Object.assign(e.st, m.you.st); } }
+  }
+  if (m.orbAdd) for (const [id, x, y, v, k] of m.orbAdd) { const kind = k ? 'size' : 'spd'; net.orbs.set(id, { id, x, y, v, kind, c: KIND_COLOR[kind], r: 2.5 + Math.sqrt(v) * 2.8, ph: rand(0, 6.28) }); }
+  if (m.orbDel) for (const id of m.orbDel) net.orbs.delete(id);
+  if (m.orbAdd || m.orbDel) net.orbArr = [...net.orbs.values()];
+  if (m.top) net.top = m.top; if (m.n) net.n = m.n;
+  if (m.fx) for (const f of m.fx) {
+    if (f[0] === 0) { fx.push({ type: 'hit', x: f[1], y: f[2], s: f[3], t: 0, T: 0.22, rot: rand(0, 1) }); if (f[4]) cam.shake = Math.max(cam.shake || 0, f[4] === 1 ? 7 : 4); }
+    else for (let i = 0; i < 18; i++) parts.push({ x: f[1], y: f[2], vx: rand(-1, 1) * 260, vy: rand(-1, 1) * 260, t: 0.6, c: KIND_COLOR[pick(LIVE_KINDS)], s: rand(3, 7) * (f[3] / R0) });
+  }
+}
+function onDead(m) {
+  if (m.weapons) for (const d of m.weapons) if (!net.weapons.has(d.id)) net.weapons.set(d.id, weaponFromDef(d));
+  mode = 'dead';
+  if (me) { me.alive = false; me.kills = m.kills; me.maxMass = m.maxMass; }
+  if (track) { track.killerName = m.killer || ''; track.killer = m.killerWid ? net.weapons.get(m.killerWid) || null : null; track.time = m.time; }
+  setTimeout(showResult, 900);
+}
+function onList(m) {
+  let added = 0;
+  for (const d of m.weapons) { if (pool.some(w => w.wid === d.id)) continue; const w = weaponFromDef(d); w.user = true; w.created = Date.now() - added++; pool.push(w); }
+  renderPicker();
+}
+function netUpdate(dt) {
+  const now = performance.now();
+  for (const e of net.ents.values()) {
+    if (e.t1) { const a = Math.min(1, (now - e.t1) / NET_LERP); e.x = e.x0 + (e.tx - e.x0) * a; e.y = e.y0 + (e.ty - e.y0) * a; e.ang = e.ang0 + angDiff(e.ang0, e.tang) * a; }
+    e.moving = Math.hypot(e.tx - e.x0, e.ty - e.y0) > 0.5;
+    if (e.moving) e.walkT = (e.walkT || 0) + dt / Math.pow(scaleOf(e), GROW_HEAVY);
+    if (e.flash > 0) e.flash -= dt;
+    if (e.boosting) {
+      e.dustAcc = (e.dustAcc || 0) + dt * DASH_DUST;
+      while (e.dustAcc >= 1) {
+        e.dustAcc -= 1;
+        const back = e.r * rand(0.6, 1.1), side = rand(-1, 1) * e.r * 0.8;
+        parts.push({ x: e.x - Math.cos(e.ang) * back - Math.sin(e.ang) * side, y: e.y - Math.sin(e.ang) * back + Math.cos(e.ang) * side + e.r * 0.4,
+          vx: -Math.cos(e.ang) * rand(40, 140) + rand(-40, 40), vy: -Math.sin(e.ang) * rand(40, 140) + rand(-40, 40), t: rand(0.25, 0.5), c: 'rgba(235,235,245,.85)', s: e.r * rand(0.08, 0.16) });
+      }
+    }
+  }
+  ents = [...net.ents.values()];
+  orbs = net.orbArr;
+  if (me && me.alive) {
+    let tgt, moving;
+    if (touch.dir != null) { tgt = touch.dir; moving = true; }
+    else { const [wx, wy] = screenToWorld(mouse.x, mouse.y); moving = d2(wx, wy, me.x, me.y) > (me.r * 0.6) ** 2; tgt = Math.atan2(wy - me.y, wx - me.x); }
+    net.inAcc += dt;
+    if (net.inAcc >= 0.05 || me.boost) { net.inAcc = 0; netSend({ t: 'in', a: +tgt.toFixed(3), m: moving ? 1 : 0, b: me.boost ? 1 : 0 }); me.boost = false; }
+    if (track) track.time += dt;
+  }
+  // 구슬이 빨려 들어오는 연출 (먹히는 건 서버가 정함)
+  for (const ob of orbs) {
+    let best = null, bd = Infinity;
+    for (const e of ents) { if (!e.alive) continue; const dd = d2(e.x, e.y, ob.x, ob.y), mr = e.r + MAGNET + e.r * 0.5; if (dd < mr * mr && dd < bd) { bd = dd; best = e; } }
+    if (best) { const dl = Math.sqrt(bd) || 1, pull = Math.min(dl, (MAGNET_SPEED + SPEED) * dt); ob.x += (best.x - ob.x) / dl * pull; ob.y += (best.y - ob.y) / dl * pull; }
+  }
+  for (let i = fx.length - 1; i >= 0; i--) { fx[i].t += dt / (fx[i].k || 1); if (fx[i].t > fx[i].T) fx.splice(i, 1); }
+  cam.shake = Math.max(0, (cam.shake || 0) - dt * 30);
+  for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.9; p.vy *= 0.9; if (p.t <= 0) parts.splice(i, 1); }
+  const focus = me;
+  if (focus) {
+    cam.x += (focus.x - cam.x) * Math.min(1, dt * 6); cam.y += (focus.y - cam.y) * Math.min(1, dt * 6);
+    const base = Math.min(VW, VH) / CAM_VIEW;
+    const tz = base * clamp(1 / (1 + (scaleOf(focus) - 1) * CAM_GROW), CAM_MIN, 1);
+    cam.z += (tz - cam.z) * Math.min(1, dt * 1.5);
+  } else { cam.z += (Math.min(VW, VH) / CAM_VIEW - cam.z) * Math.min(1, dt * 1.5); }
 }
 function cardEl(w, tag, onStart, startLabel) {
   const d = document.createElement('div'); d.className = 'card';
@@ -1049,7 +1172,7 @@ function renderPicker() {
   list.forEach(w => box.appendChild(cardEl(w, w.user ? '이 기기에서 그림' : '', startGame)));
   $('sortNew').classList.toggle('on', sortMode === 'new'); $('sortUsed').classList.toggle('on', sortMode === 'used');
 }
-function openPicker() { renderPicker(); show('picker'); }
+function openPicker() { renderPicker(); show('picker'); if (NET) netConnect(() => netSend({ t: 'list' })); }
 function showResult() {
   $('resTitle').textContent = track.killerName ? `${track.killerName}에게 쓰러졌다!` : '쓰러졌다!';
   $('lastLine').textContent = `지난 판: 처치 ${me.kills} · ${Math.round(track.time)}초 버팀` + (track.killerName ? ` · ${track.killerName}에게 당함` : '');
@@ -1274,7 +1397,7 @@ if (SIM) {
   addEventListener('pagehide', leave);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') leave(); });
 })();
-prepChar(() => loadUserPool(() => { initWorld(); requestAnimationFrame(loop); }));
+prepChar(() => loadUserPool(() => { if (NET) { for (let i = 0; i < 1500; i++) addOrb(rand(-2500, 2500), rand(-2500, 2500), randOrbV()); cam.z = Math.min(VW, VH) / CAM_VIEW; } else initWorld(); requestAnimationFrame(loop); }));
 setInterval(refreshMenuWeapon, 500);
 </script>
 </body>
