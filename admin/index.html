@@ -27,18 +27,19 @@ select{background:#1f1f24;color:#eee;border:2px solid #444;border-radius:10px;pa
 .grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
 @media(max-width:900px){.grid,.grid3{grid-template-columns:1fr}}
-.bars{display:flex;align-items:flex-end;gap:4px;height:160px;margin-top:8px}
-.bars .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
-.bars .b i{display:block;width:100%;background:#8fd3ff;border-radius:4px 4px 0 0;min-height:2px}
-.bars .b i.v2{background:#3b4a7a}
-.bars .b .v{font-size:11px;color:#ccc;margin-bottom:3px}
-.bars .b .x{font-size:10px;color:#888;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.bars{display:flex;gap:4px;height:170px;margin-top:8px}
+.bars .b{flex:1;display:flex;flex-direction:column;min-width:0}
+.bars .b .v{font-size:11px;color:#ccc;text-align:center;height:14px;line-height:14px}
+.bars .b .area{position:relative;flex:1;border-bottom:1px solid #3a3a42}
+.bars .b .area i{position:absolute;left:0;right:0;bottom:0;background:#8fd3ff;border-radius:4px 4px 0 0}
+.bars .b .area i.v2{background:#3b4a7a;border-radius:0}
+.bars .b .x{font-size:10px;color:#888;height:16px;line-height:16px;text-align:center;white-space:nowrap;overflow:visible}
 .legend{font-size:12px;color:#999;margin-top:6px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin:0 4px 0 8px}
-.hbar{display:grid;grid-template-columns:110px 1fr 44px;gap:8px;align-items:center;font-size:13px;padding:4px 0}
+.hbar{display:grid;grid-template-columns:minmax(120px,42%) 1fr 64px;gap:8px;align-items:center;font-size:13px;padding:4px 0}
 .hbar .t{display:block;height:12px;background:#333;border-radius:6px;overflow:hidden}
 .hbar .t i{display:block;height:100%;background:#8fd3ff}
-.hbar .r{text-align:right;color:#ccc}
+.hbar .r{text-align:right;color:#ccc;white-space:nowrap}
 .hbar .k{color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fb{background:#26262c;border-radius:12px;padding:10px 12px;margin:8px 0}
 .fb .meta{font-size:12px;color:#999;margin-bottom:4px}
@@ -156,21 +157,21 @@ function render() {
   for (const v of visits) { const o = dm.get(dayKey(v.created_at)); if (!o || !v.vid) continue; o.v.add(v.vid); if (v.data.first) o.n.add(v.vid); }
   const dayList = [...dm.values()], dmax = Math.max(1, ...dayList.map(o => o.v.size));
   const showEvery = days > 14 ? Math.ceil(days / 14) : 1;
-  $('daily').innerHTML = dayList.map((o, i) => `<div class="b"><span class="v">${o.v.size || ''}</span><i style="height:${Math.round(85 * o.v.size / dmax)}%"></i><i class="v2" style="height:${Math.round(85 * o.n.size / dmax)}%;margin-top:-${Math.round(85 * o.n.size / dmax)}%"></i><span class="x">${i % showEvery === 0 || i === dayList.length - 1 ? `${o.d.getMonth() + 1}/${o.d.getDate()}(${DAYS[o.d.getDay()]})` : ''}</span></div>`).join('');
+  $('daily').innerHTML = dayList.map((o, i) => `<div class="b"><span class="v">${o.v.size || ''}</span><div class="area"><i style="height:${Math.round(100 * o.v.size / dmax)}%"></i><i class="v2" style="height:${Math.round(100 * o.n.size / dmax)}%"></i></div><span class="x">${i % showEvery === 0 || i === dayList.length - 1 ? `${o.d.getMonth() + 1}/${o.d.getDate()}(${DAYS[o.d.getDay()]})` : ''}</span></div>`).join('');
 
   // PC·모바일
   const pcN = visits.length - mobile;
   $('split').innerHTML = visits.length ? `<div style="background:#8fd3ff;width:${100 * pcN / visits.length}%">PC ${pct(pcN, visits.length)}</div><div style="background:#ffd34d;width:${100 * mobile / visits.length}%">모바일 ${pct(mobile, visits.length)}</div>` : '';
-  const scr = {}; for (const v of visits) { const k = `${v.data.device === 'mobile' ? '모바일' : 'PC'} ${v.data.w && v.data.h ? v.data.w + '×' + v.data.h : ''}`.trim(); scr[k] = (scr[k] || 0) + 1; }
+  const scr = {}; for (const v of visits) { const k = `${v.data.device === 'mobile' ? '모바일' : 'PC'} ${v.data.w && v.data.h ? v.data.w + '×' + v.data.h : '(크기 모름)'}`; scr[k] = (scr[k] || 0) + 1; }
   hbars($('device'), Object.entries(scr).sort((a, b) => b[1] - a[1]).slice(0, 6), visits.length);
 
   // 시간대
   const hours = new Array(24).fill(0); for (const v of visits) hours[new Date(v.created_at).getHours()]++;
   const hmax = Math.max(1, ...hours);
-  $('hourly').innerHTML = hours.map((n, h) => `<div class="b"><span class="v">${n || ''}</span><i style="height:${Math.round(85 * n / hmax)}%"></i><span class="x">${h % 3 === 0 ? h : ''}</span></div>`).join('');
+  $('hourly').innerHTML = hours.map((n, h) => `<div class="b" title="${h}시: ${n}번"><div class="area"><i style="height:${Math.round(100 * n / hmax)}%"></i></div><span class="x">${h % 6 === 0 ? h + '시' : ''}</span></div>`).join('');
 
   // 유입 경로
-  const refMap = {}; for (const v of visits) { const k = v.data.ref || '직접 입력 · 즐겨찾기 · 메신저'; refMap[k] = (refMap[k] || 0) + 1; }
+  const refMap = {}; for (const v of visits) { const k = v.data.ref || '직접 입력·메신저'; refMap[k] = (refMap[k] || 0) + 1; }
   hbars($('ref'), Object.entries(refMap).sort((a, b) => b[1] - a[1]).slice(0, 8), visits.length);
 
   // 전환
