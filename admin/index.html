@@ -7,47 +7,36 @@
 <title>쫌쫌따리 트래픽</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#141417;color:#eee;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;padding:20px 22px 40px}
+:root{--bg:#141417;--card:#1f1f24;--ink:#f0efec;--ink2:#c3c2b7;--muted:#8a8a94;--grid:#2e2e36;--s1:#3987e5;--s2:#c98500;--s3:#199e70;--s4:#9085e9}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;padding:20px 22px 40px}
 h1{margin:0;font-size:22px}
-h2{font-size:15px;margin:0 0 10px;color:#aaa;font-weight:normal}
-.card{background:#1f1f24;border-radius:14px;padding:16px 18px}
+h2{font-size:15px;margin:0 0 10px;color:var(--ink2);font-weight:normal}
+.card{background:var(--card);border-radius:14px;padding:16px 18px}
 #login{max-width:360px;margin:60px auto}
 input,button,select{font-family:inherit;font-size:15px}
-input{width:100%;padding:10px;border:2px solid #444;border-radius:10px;background:#111;color:#eee;margin:6px 0}
-button{padding:8px 16px;border:2px solid #eee;border-radius:12px;background:#eee;color:#111;cursor:pointer;margin:4px 2px}
-button.ghost{background:none;color:#eee}
+input{width:100%;padding:10px;border:2px solid #444;border-radius:10px;background:#111;color:var(--ink);margin:6px 0}
+button{padding:8px 16px;border:2px solid var(--ink);border-radius:12px;background:var(--ink);color:#111;cursor:pointer;margin:4px 2px}
+button.ghost{background:none;color:var(--ink)}
 button.danger{border-color:#ff6b6b;color:#ff6b6b;background:none;padding:3px 9px;font-size:12px}
-select{background:#1f1f24;color:#eee;border:2px solid #444;border-radius:10px;padding:7px 10px}
+select{background:var(--card);color:var(--ink);border:2px solid #444;border-radius:10px;padding:7px 10px}
 #top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:18px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
-.kpi{background:#1f1f24;border-radius:14px;padding:14px 16px}
+.kpi{background:var(--card);border-radius:14px;padding:14px 16px;cursor:default;transition:background .15s}
+.kpi:hover{background:#27272e}
 .kpi .n{font-size:32px;font-weight:bold;line-height:1.1}
-.kpi .l{font-size:13px;color:#999;margin-top:4px}
-.kpi .d{font-size:12px;color:#8fd3ff;margin-top:2px}
+.kpi .l{font-size:13px;color:var(--muted);margin-top:4px}
+.kpi .d{font-size:12px;color:#8fb8ff;margin-top:2px;min-height:16px}
 .grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
 @media(max-width:900px){.grid,.grid3{grid-template-columns:1fr}}
-.bars{display:flex;gap:4px;height:170px;margin-top:8px}
-.bars .b{flex:1;display:flex;flex-direction:column;min-width:0}
-.bars .b .v{font-size:11px;color:#ccc;text-align:center;height:14px;line-height:14px}
-.bars .b .area{position:relative;flex:1;border-bottom:1px solid #3a3a42}
-.bars .b .area i{position:absolute;left:0;right:0;bottom:0;background:#8fd3ff;border-radius:4px 4px 0 0}
-.bars .b .area i.v2{background:#3b4a7a;border-radius:0}
-.bars .b .x{font-size:10px;color:#888;height:16px;line-height:16px;text-align:center;white-space:nowrap;overflow:visible}
-.legend{font-size:12px;color:#999;margin-top:6px}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin:0 4px 0 8px}
-.hbar{display:grid;grid-template-columns:minmax(120px,42%) 1fr 64px;gap:8px;align-items:center;font-size:13px;padding:4px 0}
-.hbar .t{display:block;height:12px;background:#333;border-radius:6px;overflow:hidden}
-.hbar .t i{display:block;height:100%;background:#8fd3ff}
-.hbar .r{text-align:right;color:#ccc;white-space:nowrap}
-.hbar .k{color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch{position:relative;width:100%}
+.ch canvas{width:100%!important}
 .fb{background:#26262c;border-radius:12px;padding:10px 12px;margin:8px 0}
-.fb .meta{font-size:12px;color:#999;margin-bottom:4px}
+.fb .meta{font-size:12px;color:var(--muted);margin-bottom:4px}
 .fb .msg{white-space:pre-wrap;word-break:break-word}
-.hint{color:#888;font-size:13px}
+.hint{color:var(--muted);font-size:13px}
 #err{color:#ff6b6b;min-height:20px}
-.split{display:flex;height:22px;border-radius:11px;overflow:hidden;margin:10px 0 6px;font-size:12px}
-.split div{display:flex;align-items:center;justify-content:center;color:#111;font-weight:bold;min-width:0}
+.sub{font-size:12px;color:var(--muted);margin-top:8px}
 </style>
 </head>
 <body>
@@ -72,20 +61,21 @@ select{background:#1f1f24;color:#eee;border:2px solid #444;border-radius:10px;pa
   <div class="kpis" id="kpis"></div>
 
   <div class="grid">
-    <div class="card"><h2>날짜별 방문자</h2><div class="bars" id="daily"></div><div class="legend"><i style="background:#8fd3ff"></i>방문자(기기 수)<i style="background:#3b4a7a"></i>그중 신규</div></div>
-    <div class="card"><h2>PC · 모바일</h2><div class="split" id="split"></div><div id="device"></div></div>
+    <div class="card"><h2>날짜별 방문자</h2><div class="ch" style="height:230px"><canvas id="cDaily"></canvas></div><div class="sub">막대에 마우스를 올리면 그날 신규·재방문·게임 시작 수가 보입니다</div></div>
+    <div class="card"><h2>PC · 모바일</h2><div class="ch" style="height:150px"><canvas id="cDevice"></canvas></div><div class="ch" style="height:90px;margin-top:8px"><canvas id="cScreen"></canvas></div></div>
   </div>
 
   <div class="grid3">
-    <div class="card"><h2>시간대별 방문 (0시~23시)</h2><div class="bars" id="hourly" style="height:120px"></div></div>
-    <div class="card"><h2>어디서 들어왔나</h2><div id="ref"></div></div>
-    <div class="card"><h2>들어와서 뭘 했나</h2><div id="funnel"></div></div>
+    <div class="card"><h2>시간대별 방문</h2><div class="ch" style="height:200px"><canvas id="cHour"></canvas></div></div>
+    <div class="card"><h2>어디서 들어왔나</h2><div class="ch" style="height:200px"><canvas id="cRef"></canvas></div></div>
+    <div class="card"><h2>들어와서 뭘 했나</h2><div class="ch" style="height:200px"><canvas id="cFunnel"></canvas></div></div>
   </div>
 
   <div class="card"><h2>💬 개발자에게 한마디 <span class="hint" id="fbCount"></span></h2><div id="fbList"></div></div>
 </div>
 
 <script src="../config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
@@ -118,17 +108,28 @@ async function load() {
   render();
 }
 
+// ---- 그래프 공통 설정 (어두운 바탕, 얇은 선, 마우스 올리면 수치) ----
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+Chart.defaults.color = css('--ink2'); Chart.defaults.font.family = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif"; Chart.defaults.font.size = 12;
+Chart.defaults.plugins.tooltip.backgroundColor = '#0f0f12'; Chart.defaults.plugins.tooltip.titleColor = '#fff'; Chart.defaults.plugins.tooltip.bodyColor = '#ddd';
+Chart.defaults.plugins.tooltip.padding = 10; Chart.defaults.plugins.tooltip.cornerRadius = 8; Chart.defaults.plugins.tooltip.displayColors = true;
+Chart.defaults.plugins.legend.labels.boxWidth = 10; Chart.defaults.plugins.legend.labels.boxHeight = 10;
+Chart.defaults.animation.duration = 500;
+const charts = {};
+function chart(id, cfg) {
+  if (charts[id]) { charts[id].data = cfg.data; charts[id].options = cfg.options; charts[id].update(); return; }
+  charts[id] = new Chart($(id), cfg);
+}
+const axis = (extra) => Object.assign({ grid: { color: css('--grid'), drawTicks: false }, border: { display: false }, ticks: { color: css('--muted') } }, extra || {});
+const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
+
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const dayKey = d => { const t = new Date(d); return `${t.getMonth() + 1}/${t.getDate()}`; };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
-const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
 const fmt = d => new Date(d).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 const vids = v => new Set(v.map(r => r.vid).filter(Boolean));
-function hbars(el, pairs, total) {
-  const max = Math.max(1, ...pairs.map(p => p[1]));
-  el.innerHTML = pairs.length ? pairs.map(([k, n]) => `<div class="hbar"><span class="k" title="${esc(k)}">${esc(k)}</span><span class="t"><i style="width:${Math.round(100 * n / max)}%"></i></span><span class="r">${n}${total ? ` <span class="hint">${pct(n, total)}</span>` : ''}</span></div>`).join('') : '<p class="hint">아직 없음</p>';
-}
+const topN = (map, n) => Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, n);
 
 function render() {
   const days = +$('range').value, exMe = $('exMe').checked;
@@ -140,45 +141,59 @@ function render() {
   const uv = vids(visits), newV = vids(visits.filter(r => r.data.first)), startedV = vids(starts);
   const stay = leaves.map(l => l.data.seconds || 0).filter(x => x > 0 && x < 7200);
   const mobile = visits.filter(v => v.data.device === 'mobile').length;
-  // 이전 같은 기간과 비교
   const prevSince = new Date(since); prevSince.setDate(prevSince.getDate() - days);
   const prevUv = vids(all.filter(r => r.type === 'visit' && new Date(r.created_at) >= prevSince && new Date(r.created_at) < since)).size;
-  const diff = prevUv ? ` 지난 기간 ${prevUv}명 (${uv.size >= prevUv ? '+' : ''}${uv.size - prevUv})` : '';
+  const diff = prevUv ? `지난 기간 ${prevUv}명 (${uv.size >= prevUv ? '+' : ''}${uv.size - prevUv})` : '';
+  const sorted = stay.slice().sort((a, b) => a - b), median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
   $('kpis').innerHTML = [
-    ['방문자', uv.size, diff], ['방문 수', visits.length, uv.size ? `1명당 ${(visits.length / uv.size).toFixed(1)}번` : ''],
-    ['신규 방문자', newV.size, pct(newV.size, uv.size) + ' 가 처음'], ['재방문자', uv.size - newV.size, ''],
-    ['평균 머문 시간', stay.length ? Math.round(avg(stay)) + '초' : '-', stay.length ? `${stay.length}명 기준` : ''],
-    ['게임 시작한 방문자', pct(startedV.size, uv.size), `${startedV.size}명 · 총 ${starts.length}판`],
-    ['모바일', pct(mobile, visits.length), `${mobile}번 방문`],
-  ].map(([l, n, d]) => `<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div><div class="d">${d}</div></div>`).join('');
+    ['방문자', uv.size, diff, '같은 기기는 한 명으로 셉니다'],
+    ['방문 수', visits.length, uv.size ? `1명당 ${(visits.length / uv.size).toFixed(1)}번` : '', '페이지를 연 횟수'],
+    ['신규 방문자', newV.size, pct(newV.size, uv.size) + ' 가 처음', '이 기간에 처음 들어온 기기'],
+    ['재방문자', uv.size - newV.size, '', '전에 온 적 있는 기기'],
+    ['평균 머문 시간', stay.length ? Math.round(avg(stay)) + '초' : '-', stay.length ? `중간값 ${Math.round(median)}초 · ${stay.length}명 기준` : '', '페이지를 열고 닫을 때까지'],
+    ['게임 시작한 방문자', pct(startedV.size, uv.size), `${startedV.size}명 · 총 ${starts.length}판`, '플레이 버튼을 누른 비율'],
+    ['모바일', pct(mobile, visits.length), `${mobile}번 방문`, '폰·태블릿으로 들어온 비율'],
+  ].map(([l, n, d, t]) => `<div class="kpi" title="${esc(t)}"><div class="n">${n}</div><div class="l">${l}</div><div class="d">${d}</div></div>`).join('');
 
-  // 날짜별 방문자 막대 (왼쪽 → 오른쪽 = 과거 → 오늘)
-  const dm = new Map(); for (let i = 0; i < days; i++) { const d = new Date(since); d.setDate(d.getDate() + i); dm.set(dayKey(d), { d, v: new Set(), n: new Set() }); }
-  for (const v of visits) { const o = dm.get(dayKey(v.created_at)); if (!o || !v.vid) continue; o.v.add(v.vid); if (v.data.first) o.n.add(v.vid); }
-  const dayList = [...dm.values()], dmax = Math.max(1, ...dayList.map(o => o.v.size));
-  const showEvery = days > 14 ? Math.ceil(days / 14) : 1;
-  $('daily').innerHTML = dayList.map((o, i) => `<div class="b"><span class="v">${o.v.size || ''}</span><div class="area"><i style="height:${Math.round(100 * o.v.size / dmax)}%"></i><i class="v2" style="height:${Math.round(100 * o.n.size / dmax)}%"></i></div><span class="x">${i % showEvery === 0 || i === dayList.length - 1 ? `${o.d.getMonth() + 1}/${o.d.getDate()}(${DAYS[o.d.getDay()]})` : ''}</span></div>`).join('');
+  // 날짜별: 재방문 + 신규 쌓기
+  const dm = new Map(); for (let i = 0; i < days; i++) { const d = new Date(since); d.setDate(d.getDate() + i); dm.set(dayKey(d), { d, v: new Set(), n: new Set(), visits: 0, starts: 0 }); }
+  for (const v of visits) { const o = dm.get(dayKey(v.created_at)); if (!o) continue; o.visits++; if (v.vid) { o.v.add(v.vid); if (v.data.first) o.n.add(v.vid); } }
+  for (const s of starts) { const o = dm.get(dayKey(s.created_at)); if (o) o.starts++; }
+  const dl = [...dm.values()];
+  chart('cDaily', { type: 'bar', data: { labels: dl.map(o => `${o.d.getMonth() + 1}/${o.d.getDate()} (${DAYS[o.d.getDay()]})`),
+    datasets: [
+      { label: '재방문', data: dl.map(o => o.v.size - o.n.size), backgroundColor: css('--s1'), borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: false, barPercentage: 0.7, categoryPercentage: 0.8 },
+      { label: '신규', data: dl.map(o => o.n.size), backgroundColor: css('--s2'), borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: false, barPercentage: 0.7, categoryPercentage: 0.8 }] },
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      scales: { x: axis({ stacked: true, grid: { display: false }, ticks: { color: css('--muted'), maxRotation: 0, autoSkip: true, maxTicksLimit: 14 } }), y: axis({ stacked: true, beginAtZero: true, ticks: { color: css('--muted'), precision: 0 } }) },
+      plugins: { legend: { position: 'top', align: 'end' }, tooltip: { callbacks: { title: items => items[0].label, afterBody: items => { const o = dl[items[0].dataIndex]; return [`방문자 ${o.v.size}명 · 방문 ${o.visits}번`, `게임 시작 ${o.starts}판`]; } } } } } });
 
-  // PC·모바일
-  const pcN = visits.length - mobile;
-  $('split').innerHTML = visits.length ? `<div style="background:#8fd3ff;width:${100 * pcN / visits.length}%">PC ${pct(pcN, visits.length)}</div><div style="background:#ffd34d;width:${100 * mobile / visits.length}%">모바일 ${pct(mobile, visits.length)}</div>` : '';
+  // 기기
+  chart('cDevice', { type: 'doughnut', data: { labels: ['PC', '모바일'], datasets: [{ data: [visits.length - mobile, mobile], backgroundColor: [css('--s1'), css('--s2')], borderColor: css('--card'), borderWidth: 2, hoverOffset: 6 }] },
+    options: { maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right' }, tooltip: { callbacks: { label: i => ` ${i.label} ${i.parsed}번 (${pct(i.parsed, visits.length)})` } } } } });
   const scr = {}; for (const v of visits) { const k = `${v.data.device === 'mobile' ? '모바일' : 'PC'} ${v.data.w && v.data.h ? v.data.w + '×' + v.data.h : '(크기 모름)'}`; scr[k] = (scr[k] || 0) + 1; }
-  hbars($('device'), Object.entries(scr).sort((a, b) => b[1] - a[1]).slice(0, 6), visits.length);
+  const sc = topN(scr, 4);
+  chart('cScreen', { type: 'bar', data: { labels: sc.map(x => x[0]), datasets: [{ data: sc.map(x => x[1]), backgroundColor: sc.map(x => x[0].startsWith('모바일') ? css('--s2') : css('--s1')), borderRadius: 4, borderSkipped: false, barThickness: 10 }] },
+    options: { indexAxis: 'y', maintainAspectRatio: false, scales: { x: { display: false }, y: axis({ grid: { display: false }, ticks: { color: css('--ink2'), font: { size: 11 } } }) }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: i => ` ${i.parsed.x}번 (${pct(i.parsed.x, visits.length)})` } } } } });
 
   // 시간대
   const hours = new Array(24).fill(0); for (const v of visits) hours[new Date(v.created_at).getHours()]++;
-  const hmax = Math.max(1, ...hours);
-  $('hourly').innerHTML = hours.map((n, h) => `<div class="b" title="${h}시: ${n}번"><div class="area"><i style="height:${Math.round(100 * n / hmax)}%"></i></div><span class="x">${h % 6 === 0 ? h + '시' : ''}</span></div>`).join('');
+  chart('cHour', { type: 'bar', data: { labels: hours.map((_, h) => h + '시'), datasets: [{ label: '방문', data: hours, backgroundColor: css('--s1'), borderRadius: { topLeft: 3, topRight: 3 }, borderSkipped: false, barPercentage: 0.75, categoryPercentage: 0.9 }] },
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: axis({ grid: { display: false }, ticks: { color: css('--muted'), maxRotation: 0, callback: (v, i) => i % 6 === 0 ? i + '시' : '' } }), y: axis({ beginAtZero: true, ticks: { color: css('--muted'), precision: 0 } }) },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: items => items[0].label + ' ~ ' + ((items[0].dataIndex + 1) % 24) + '시', label: i => ` 방문 ${i.parsed.y}번 (${pct(i.parsed.y, visits.length)})` } } } } });
 
   // 유입 경로
   const refMap = {}; for (const v of visits) { const k = v.data.ref || '직접 입력·메신저'; refMap[k] = (refMap[k] || 0) + 1; }
-  hbars($('ref'), Object.entries(refMap).sort((a, b) => b[1] - a[1]).slice(0, 8), visits.length);
+  const rl = topN(refMap, 7);
+  chart('cRef', { type: 'bar', data: { labels: rl.map(x => x[0]), datasets: [{ data: rl.map(x => x[1]), backgroundColor: css('--s1'), borderRadius: 4, borderSkipped: false, barThickness: 14 }] },
+    options: { indexAxis: 'y', maintainAspectRatio: false, scales: { x: axis({ beginAtZero: true, ticks: { color: css('--muted'), precision: 0 } }), y: axis({ grid: { display: false }, ticks: { color: css('--ink2') } }) }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: i => ` ${i.parsed.x}번 (${pct(i.parsed.x, visits.length)})` } } } } });
 
   // 전환
   const fbV = vids(inR.filter(r => r.type === 'feedback'));
-  const replay = vids(starts.filter(s => true)); // 시작한 사람
   const multi = [...startedV].filter(v => starts.filter(s => s.vid === v).length >= 2).length;
-  hbars($('funnel'), [['들어옴', uv.size], ['게임 시작', startedV.size], ['두 판 이상', multi], ['한마디 남김', fbV.size]], uv.size);
+  const fl = [['들어옴', uv.size], ['게임 시작', startedV.size], ['두 판 이상', multi], ['한마디 남김', fbV.size]];
+  chart('cFunnel', { type: 'bar', data: { labels: fl.map(x => x[0]), datasets: [{ data: fl.map(x => x[1]), backgroundColor: [css('--s1'), css('--s1'), css('--s1'), css('--s2')], borderRadius: 4, borderSkipped: false, barThickness: 16 }] },
+    options: { indexAxis: 'y', maintainAspectRatio: false, scales: { x: axis({ beginAtZero: true, ticks: { color: css('--muted'), precision: 0 } }), y: axis({ grid: { display: false }, ticks: { color: css('--ink2') } }) }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: i => ` ${i.parsed.x}명 (방문자의 ${pct(i.parsed.x, uv.size)})` } } } } });
 
   // 한마디
   $('fbCount').textContent = `(${fbs.length}개, 전체 기간)`;
