@@ -1073,6 +1073,7 @@ function netConnect(onOpen) {
   ws.binaryType = 'arraybuffer';
   net.ws = ws; ws.onopen = onOpen;
   ws.onmessage = ev => {
+    net.lastMsgAt = performance.now();
     if (ev.data instanceof ArrayBuffer) { onSnap(unpackSnap(ev.data)); return; }
     const m = JSON.parse(ev.data);
     if (m.t === 'meta') onSnap(Object.assign({ ents: [] }, m)); // 이름·무기 그림·순위 (가끔)
@@ -1097,6 +1098,13 @@ function startGame(w) {
   net.joinedAt = performance.now(); net.join = join;
   netConnect(join);
 }
+// 4초 넘게 서버에서 아무것도 안 오면 끊긴 것: 멈춘 화면에 갇히지 않게 시작 화면으로
+setInterval(() => {
+  if (NET && mode === 'play' && me && net.ws && net.lastMsgAt && performance.now() - net.lastMsgAt > 4000) {
+    try { net.ws.close(); } catch (e) {} net.ws = null; mode = 'menu'; me = null;
+    $('lastLine').textContent = '서버와 연결이 끊겼습니다. 다시 눌러 주세요.'; show('menu');
+  }
+}, 1000);
 // 들어갔는데 3초 넘게 내 모습이 안 오면 다시 요청 (연결이 늦거나 요청이 씹힌 경우)
 setInterval(() => { if (NET && mode === 'play' && !me && net.join && performance.now() - net.joinedAt > 3000) { net.joinedAt = performance.now(); netConnect(net.join); } }, 1000);
 function onSnap(m) {
