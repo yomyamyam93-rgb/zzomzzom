@@ -134,6 +134,7 @@ textarea{background:var(--pill)!important;color:var(--ink)!important;border:2px 
     <button id="btnResDraw">✏️ 새로 그리기</button>
     <button id="btnResPick">📂 목록에서 고르기</button>
   </div>
+  <div style="margin-top:6px"><button class="link" id="btnShare">🔗 친구한테 보내기</button> <span id="shareMsg" class="hint"></span></div>
   <div id="fbBox" style="display:none;margin-top:18px;border-top:2px dashed #ccc;padding-top:12px">
     <div><b>개발자에게 한마디</b> <span class="hint">(버그, 요청, 아무 말이나)</span></div>
     <textarea id="fbText" maxlength="300" rows="3" placeholder="예) 망치가 너무 세요 / 색 더 많았으면" style="width:min(520px,90vw);font-family:inherit;font-size:14px;padding:8px;border:3px solid #111;border-radius:12px;margin:6px 0;resize:vertical"></textarea>
@@ -1302,6 +1303,13 @@ $('sortUsed').onclick = () => { sortMode = 'used'; renderPicker(); };
 $('btnResMine').onclick = () => startGame(myBaseWeapon);
 $('btnResDraw').onclick = () => openEditor(null);
 $('btnResPick').onclick = openPicker;
+$('btnShare').onclick = async () => {
+  const url = 'https://쫌쫌따리.com', text = `${me ? me.kills : 0}명 잡고 ${track ? Math.round(track.time) : 0}초 버텼다. 너도 해 봐 - 쫌쫌따리`;
+  logEvent('share', { nick: nick(), kills: me ? me.kills : 0 });
+  if (navigator.share) { try { await navigator.share({ title: '쫌쫌따리', text, url }); $('shareMsg').textContent = '보냈어요!'; return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); $('shareMsg').textContent = '주소를 복사했어요. 카톡에 붙여 넣으세요.'; }
+  catch (e) { $('shareMsg').textContent = url; }
+};
 $('fbSend').onclick = () => {
   const t = $('fbText').value.trim(); if (!t) { $('fbMsg').textContent = '내용을 적어 주세요.'; return; }
   $('fbSend').disabled = true; $('fbMsg').textContent = '보내는 중…';
