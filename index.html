@@ -201,7 +201,7 @@ const REPORT_LIMIT = 5;   // 목록에서 내려가는 신고 수 (서버 붙으
 
 const $ = id => document.getElementById(id);
 const NET = location.protocol !== 'file:' && !/[?&](sim|offline)/.test(location.search); // 온라인(서버 세계) 모드
-const NET_LERP = 70; // 서버 위치를 따라가는 부드러움(ms)
+const NET_LERP = 60; // 서버 위치를 따라가는 부드러움(ms)
 const SIM = /[?&]sim=(\d+)/.test(location.search) ? Math.max(1, Math.min(8, +RegExp.$1)) : 0; // ?sim=3 이면 3배속
 // ===== 통계·한마디 저장 (config.js에 주소와 키가 있을 때만 동작) =====
 const CFG = (typeof window.JJ_CONFIG === 'object' && window.JJ_CONFIG) || {};
@@ -585,7 +585,7 @@ let fx = [];
 const killLog = []; // [이긴 무기 무게,길이,두께,먹은양, 진 무기 무게,길이,두께,먹은양, 사람여부]
 setInterval(() => { if (killLog.length) { logEvent('kills', { k: killLog.splice(0, 300) }); } }, 30000);
 function doHits(e) {
-  const A1 = weaponAng(e), A0 = e.prevA == null ? A1 : e.prevA; e.prevA = A1;
+  const A1 = weaponAng(e), A0 = e.prevA == null ? e.ang - e.swingDir * e.weapon.half : e.prevA; e.prevA = A1;
   const [hx, hy] = handPos(e), reach = e.weapon.len * weaponScale(e);
   const thick = 6 * weaponScale(e);
   const steps = Math.max(1, Math.ceil(Math.abs(A1 - A0) / 0.12));
@@ -1085,8 +1085,12 @@ function startGame(w) {
   window._plays = (window._plays || 0) + 1;
   logEvent('start', { nick: nick(), weapon: w.name, weaponUser: w.user, online: true });
   mode = 'play'; show(null);
-  netConnect(() => netSend(w.wid ? { t: 'join', nick: nick(), wid: w.wid } : { t: 'join', nick: nick(), weapon: { png: w.cv.toDataURL('image/png'), hand: w.hand } }));
+  const join = () => netSend(w.wid ? { t: 'join', nick: nick(), wid: w.wid } : { t: 'join', nick: nick(), weapon: { png: w.cv.toDataURL('image/png'), hand: w.hand } });
+  net.joinedAt = performance.now(); net.join = join;
+  netConnect(join);
 }
+// 들어갔는데 3초 넘게 내 모습이 안 오면 다시 요청 (연결이 늦거나 요청이 씹힌 경우)
+setInterval(() => { if (NET && mode === 'play' && !me && net.join && performance.now() - net.joinedAt > 3000) { net.joinedAt = performance.now(); netConnect(net.join); } }, 1000);
 function onSnap(m) {
   const now = performance.now();
   if (m.weapons) for (const d of m.weapons) if (!net.weapons.has(d.id)) net.weapons.set(d.id, weaponFromDef(d));
