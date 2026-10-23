@@ -4,41 +4,54 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>쫌쫌따리 관리</title>
+<title>쫌쫌따리 트래픽</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#141417;color:#eee;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;padding:20px}
-h1{margin:0 0 16px;font-size:24px}
-h2{font-size:17px;margin:26px 0 10px;border-bottom:2px solid #333;padding-bottom:6px}
-.card{background:#1f1f24;border-radius:14px;padding:14px 16px}
+body{margin:0;background:#141417;color:#eee;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;padding:20px 22px 40px}
+h1{margin:0;font-size:22px}
+h2{font-size:15px;margin:0 0 10px;color:#aaa;font-weight:normal}
+.card{background:#1f1f24;border-radius:14px;padding:16px 18px}
 #login{max-width:360px;margin:60px auto}
 input,button,select{font-family:inherit;font-size:15px}
 input{width:100%;padding:10px;border:2px solid #444;border-radius:10px;background:#111;color:#eee;margin:6px 0}
-button{padding:9px 16px;border:2px solid #eee;border-radius:12px;background:#eee;color:#111;cursor:pointer;margin:4px 2px}
+button{padding:8px 16px;border:2px solid #eee;border-radius:12px;background:#eee;color:#111;cursor:pointer;margin:4px 2px}
 button.ghost{background:none;color:#eee}
 button.danger{border-color:#ff6b6b;color:#ff6b6b;background:none;padding:3px 9px;font-size:12px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.tile{background:#1f1f24;border-radius:14px;padding:12px}
-.tile .n{font-size:28px;font-weight:bold}
-.tile .l{font-size:12px;color:#999}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{padding:7px 8px;border-bottom:1px solid #2c2c33;text-align:left;vertical-align:top}
-th{color:#aaa;font-weight:normal}
-.fb{background:#1f1f24;border-radius:12px;padding:10px 12px;margin:8px 0}
+select{background:#1f1f24;color:#eee;border:2px solid #444;border-radius:10px;padding:7px 10px}
+#top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:#1f1f24;border-radius:14px;padding:14px 16px}
+.kpi .n{font-size:32px;font-weight:bold;line-height:1.1}
+.kpi .l{font-size:13px;color:#999;margin-top:4px}
+.kpi .d{font-size:12px;color:#8fd3ff;margin-top:2px}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:900px){.grid,.grid3{grid-template-columns:1fr}}
+.bars{display:flex;align-items:flex-end;gap:4px;height:160px;margin-top:8px}
+.bars .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.bars .b i{display:block;width:100%;background:#8fd3ff;border-radius:4px 4px 0 0;min-height:2px}
+.bars .b i.v2{background:#3b4a7a}
+.bars .b .v{font-size:11px;color:#ccc;margin-bottom:3px}
+.bars .b .x{font-size:10px;color:#888;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.legend{font-size:12px;color:#999;margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin:0 4px 0 8px}
+.hbar{display:grid;grid-template-columns:110px 1fr 44px;gap:8px;align-items:center;font-size:13px;padding:4px 0}
+.hbar .t{display:block;height:12px;background:#333;border-radius:6px;overflow:hidden}
+.hbar .t i{display:block;height:100%;background:#8fd3ff}
+.hbar .r{text-align:right;color:#ccc}
+.hbar .k{color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fb{background:#26262c;border-radius:12px;padding:10px 12px;margin:8px 0}
 .fb .meta{font-size:12px;color:#999;margin-bottom:4px}
 .fb .msg{white-space:pre-wrap;word-break:break-word}
-.bar{height:10px;background:#333;border-radius:5px;overflow:hidden}
-.bar i{display:block;height:100%;background:#8fd3ff}
-img.w{height:32px;image-rendering:pixelated;background:#fff;border-radius:6px;vertical-align:middle;margin-right:6px}
 .hint{color:#888;font-size:13px}
-#top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 #err{color:#ff6b6b;min-height:20px}
-h3.sub{font-size:14px;color:#bbb;margin:6px 0}
+.split{display:flex;height:22px;border-radius:11px;overflow:hidden;margin:10px 0 6px;font-size:12px}
+.split div{display:flex;align-items:center;justify-content:center;color:#111;font-weight:bold;min-width:0}
 </style>
 </head>
 <body>
 <div id="login" class="card">
-  <h1>쫌쫌따리 관리</h1>
+  <h1>쫌쫌따리 트래픽</h1>
   <input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password">
   <button id="btnLogin">로그인</button>
   <div id="err"></div>
@@ -46,39 +59,29 @@ h3.sub{font-size:14px;color:#bbb;margin:6px 0}
 
 <div id="dash" style="display:none">
   <div id="top">
-    <h1>쫌쫌따리 관리</h1>
+    <h1>쫌쫌따리 트래픽</h1>
     <div>
-      <select id="range"><option value="1">오늘</option><option value="7" selected>최근 7일</option><option value="30">최근 30일</option><option value="3650">전체</option></select>
+      <select id="range"><option value="1">오늘</option><option value="7" selected>최근 7일</option><option value="14">최근 14일</option><option value="30">최근 30일</option><option value="90">최근 90일</option></select>
+      <label class="hint" style="margin-left:8px"><input type="checkbox" id="exMe" checked style="width:auto;margin:0 4px 0 0;vertical-align:middle">내 테스트 접속 빼기</label>
       <button class="ghost" id="btnReload">새로고침</button>
       <button class="ghost" id="btnLogout">로그아웃</button>
     </div>
   </div>
-  <h2>🚦 트래픽</h2>
-  <div class="tiles" id="traffic"></div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:12px">
-    <div><h3 class="sub">날짜별 방문자</h3><table id="tDaily"></table></div>
-    <div><h3 class="sub">유입 경로</h3><table id="tRef"></table></div>
-    <div><h3 class="sub">기기</h3><table id="tDevice"></table></div>
-    <div><h3 class="sub">시간대별 방문</h3><table id="tHour"></table></div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card"><h2>날짜별 방문자</h2><div class="bars" id="daily"></div><div class="legend"><i style="background:#8fd3ff"></i>방문자(기기 수)<i style="background:#3b4a7a"></i>그중 신규</div></div>
+    <div class="card"><h2>PC · 모바일</h2><div class="split" id="split"></div><div id="device"></div></div>
   </div>
 
-  <h2>🎮 게임</h2>
-  <div class="tiles" id="tiles"></div>
+  <div class="grid3">
+    <div class="card"><h2>시간대별 방문 (0시~23시)</h2><div class="bars" id="hourly" style="height:120px"></div></div>
+    <div class="card"><h2>어디서 들어왔나</h2><div id="ref"></div></div>
+    <div class="card"><h2>들어와서 뭘 했나</h2><div id="funnel"></div></div>
+  </div>
 
-  <h2>💬 개발자에게 한마디 <span class="hint" id="fbCount"></span></h2>
-  <div id="fbList"></div>
-
-  <h2>📅 날짜별</h2>
-  <table id="daily"></table>
-
-  <h2>⚔️ 많이 쓴 무기</h2>
-  <table id="weapons"></table>
-
-  <h2>💀 나를 쓰러뜨린 상대 (컴퓨터 이름 기준)</h2>
-  <table id="killers"></table>
-
-  <h2>🧾 최근 판 기록</h2>
-  <table id="runs"></table>
+  <div class="card"><h2>💬 개발자에게 한마디 <span class="hint" id="fbCount"></span></h2><div id="fbList"></div></div>
 </div>
 
 <script src="../config.js"></script>
@@ -88,6 +91,7 @@ const $ = id => document.getElementById(id);
 const API = ((window.JJ_CONFIG || {}).api || '/api');
 let rows = [];
 const api = (path, opt) => fetch(API + path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opt || {}));
+let myVid = ''; try { myVid = localStorage.getItem('jj_vid') || ''; } catch (e) {}
 
 $('btnLogin').onclick = async () => {
   $('err').textContent = '';
@@ -99,11 +103,11 @@ $('btnLogin').onclick = async () => {
 $('pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnLogin').click(); });
 $('btnLogout').onclick = async () => { await api('/admin/logout', { method: 'POST' }); location.reload(); };
 $('btnReload').onclick = load;
-$('range').onchange = render;
+$('range').onchange = render; $('exMe').onchange = render;
 
 async function load() {
   rows = [];
-  for (let off = 0; off < 50000; off += 1000) {
+  for (let off = 0; off < 100000; off += 1000) {
     const r = await api(`/admin/events?limit=1000&offset=${off}`);
     if (r.status === 401) { $('login').style.display = ''; $('dash').style.display = 'none'; return; }
     if (!r.ok) { $('err').textContent = '불러오기 실패'; return; }
@@ -113,88 +117,77 @@ async function load() {
   render();
 }
 
-const fmt = d => new Date(d).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const dayKey = d => { const t = new Date(d); return `${t.getMonth() + 1}/${t.getDate()}`; };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
-function tableHtml(head, body) { return `<tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>` + body.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join(''); }
+const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
+const fmt = d => new Date(d).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const vids = v => new Set(v.map(r => r.vid).filter(Boolean));
+function hbars(el, pairs, total) {
+  const max = Math.max(1, ...pairs.map(p => p[1]));
+  el.innerHTML = pairs.length ? pairs.map(([k, n]) => `<div class="hbar"><span class="k" title="${esc(k)}">${esc(k)}</span><span class="t"><i style="width:${Math.round(100 * n / max)}%"></i></span><span class="r">${n}${total ? ` <span class="hint">${pct(n, total)}</span>` : ''}</span></div>`).join('') : '<p class="hint">아직 없음</p>';
+}
 
 function render() {
-  const days = +$('range').value, since = Date.now() - days * 86400000;
-  const inR = rows.filter(r => new Date(r.created_at).getTime() >= since);
-  const visits = inR.filter(r => r.type === 'visit'), starts = inR.filter(r => r.type === 'start');
-  const deaths = inR.filter(r => r.type === 'death'), fbs = rows.filter(r => r.type === 'feedback');
-  const uniq = new Set(visits.map(r => r.vid).filter(Boolean)).size;
-  // ---- 트래픽 ----
-  const leaves = inR.filter(r => r.type === 'leave');
-  const vids = v => new Set(v.map(r => r.vid).filter(Boolean));
-  const uv = vids(visits), newV = vids(visits.filter(r => r.data.first)), startedV = vids(starts), fbV = vids(inR.filter(r => r.type === 'feedback'));
+  const days = +$('range').value, exMe = $('exMe').checked;
+  const since = new Date(); since.setHours(0, 0, 0, 0); since.setDate(since.getDate() - (days - 1));
+  const all = rows.filter(r => !(exMe && myVid && r.vid === myVid) && r.vid !== 'server');
+  const inR = all.filter(r => new Date(r.created_at) >= since);
+  const visits = inR.filter(r => r.type === 'visit'), leaves = inR.filter(r => r.type === 'leave'), starts = inR.filter(r => r.type === 'start');
+  const fbs = all.filter(r => r.type === 'feedback');
+  const uv = vids(visits), newV = vids(visits.filter(r => r.data.first)), startedV = vids(starts);
   const stay = leaves.map(l => l.data.seconds || 0).filter(x => x > 0 && x < 7200);
-  const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
-  $('traffic').innerHTML = [
-    ['방문 수', visits.length], ['방문자', uv.size], ['신규 방문자', newV.size], ['재방문자', uv.size - newV.size],
-    ['평균 머문 시간', stay.length ? Math.round(avg(stay)) + '초' : '-'],
-    ['방문 → 게임 시작', pct(startedV.size, uv.size)], ['방문 → 한마디', pct(fbV.size, uv.size)],
-    ['모바일 비율', pct(visits.filter(v => v.data.device === 'mobile').length, visits.length)],
-  ].map(([l, n]) => `<div class="tile"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
-  const tdMap = {};
-  for (const v of visits) { const k = dayKey(v.created_at); const o = tdMap[k] = tdMap[k] || { v: new Set(), n: new Set(), c: 0 }; o.c++; if (v.vid) o.v.add(v.vid); if (v.data.first && v.vid) o.n.add(v.vid); }
-  $('tDaily').innerHTML = tableHtml(['날짜', '방문', '방문자', '신규'], Object.keys(tdMap).slice(0, 31).map(k => [k, tdMap[k].c, tdMap[k].v.size, tdMap[k].n.size]));
-  const refMap = {};
-  for (const v of visits) { const k = v.data.ref || '(직접 입력·즐겨찾기)'; refMap[k] = (refMap[k] || 0) + 1; }
-  $('tRef').innerHTML = tableHtml(['어디서', '방문'], Object.entries(refMap).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, n]) => [esc(k), n]));
-  const devMap = {};
-  for (const v of visits) { const k = `${v.data.device === 'mobile' ? '모바일' : 'PC'} · ${v.data.w || '?'}×${v.data.h || '?'} · ${v.data.lang || ''}`; devMap[k] = (devMap[k] || 0) + 1; }
-  $('tDevice').innerHTML = tableHtml(['기기 · 화면 · 언어', '방문'], Object.entries(devMap).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => [esc(k), n]));
-  const hours = new Array(24).fill(0);
-  for (const v of visits) hours[new Date(v.created_at).getHours()]++;
+  const mobile = visits.filter(v => v.data.device === 'mobile').length;
+  // 이전 같은 기간과 비교
+  const prevSince = new Date(since); prevSince.setDate(prevSince.getDate() - days);
+  const prevUv = vids(all.filter(r => r.type === 'visit' && new Date(r.created_at) >= prevSince && new Date(r.created_at) < since)).size;
+  const diff = prevUv ? ` 지난 기간 ${prevUv}명 (${uv.size >= prevUv ? '+' : ''}${uv.size - prevUv})` : '';
+  $('kpis').innerHTML = [
+    ['방문자', uv.size, diff], ['방문 수', visits.length, uv.size ? `1명당 ${(visits.length / uv.size).toFixed(1)}번` : ''],
+    ['신규 방문자', newV.size, pct(newV.size, uv.size) + ' 가 처음'], ['재방문자', uv.size - newV.size, ''],
+    ['평균 머문 시간', stay.length ? Math.round(avg(stay)) + '초' : '-', stay.length ? `${stay.length}명 기준` : ''],
+    ['게임 시작한 방문자', pct(startedV.size, uv.size), `${startedV.size}명 · 총 ${starts.length}판`],
+    ['모바일', pct(mobile, visits.length), `${mobile}번 방문`],
+  ].map(([l, n, d]) => `<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div><div class="d">${d}</div></div>`).join('');
+
+  // 날짜별 방문자 막대 (왼쪽 → 오른쪽 = 과거 → 오늘)
+  const dm = new Map(); for (let i = 0; i < days; i++) { const d = new Date(since); d.setDate(d.getDate() + i); dm.set(dayKey(d), { d, v: new Set(), n: new Set() }); }
+  for (const v of visits) { const o = dm.get(dayKey(v.created_at)); if (!o || !v.vid) continue; o.v.add(v.vid); if (v.data.first) o.n.add(v.vid); }
+  const dayList = [...dm.values()], dmax = Math.max(1, ...dayList.map(o => o.v.size));
+  const showEvery = days > 14 ? Math.ceil(days / 14) : 1;
+  $('daily').innerHTML = dayList.map((o, i) => `<div class="b"><span class="v">${o.v.size || ''}</span><i style="height:${Math.round(85 * o.v.size / dmax)}%"></i><i class="v2" style="height:${Math.round(85 * o.n.size / dmax)}%;margin-top:-${Math.round(85 * o.n.size / dmax)}%"></i><span class="x">${i % showEvery === 0 || i === dayList.length - 1 ? `${o.d.getMonth() + 1}/${o.d.getDate()}(${DAYS[o.d.getDay()]})` : ''}</span></div>`).join('');
+
+  // PC·모바일
+  const pcN = visits.length - mobile;
+  $('split').innerHTML = visits.length ? `<div style="background:#8fd3ff;width:${100 * pcN / visits.length}%">PC ${pct(pcN, visits.length)}</div><div style="background:#ffd34d;width:${100 * mobile / visits.length}%">모바일 ${pct(mobile, visits.length)}</div>` : '';
+  const scr = {}; for (const v of visits) { const k = `${v.data.device === 'mobile' ? '모바일' : 'PC'} ${v.data.w && v.data.h ? v.data.w + '×' + v.data.h : ''}`.trim(); scr[k] = (scr[k] || 0) + 1; }
+  hbars($('device'), Object.entries(scr).sort((a, b) => b[1] - a[1]).slice(0, 6), visits.length);
+
+  // 시간대
+  const hours = new Array(24).fill(0); for (const v of visits) hours[new Date(v.created_at).getHours()]++;
   const hmax = Math.max(1, ...hours);
-  $('tHour').innerHTML = tableHtml(['시', '방문', ''], hours.map((n, h) => [h + '시', n, `<div class="bar" style="width:120px"><i style="width:${Math.round(100 * n / hmax)}%"></i></div>`]).filter(r => true));
+  $('hourly').innerHTML = hours.map((n, h) => `<div class="b"><span class="v">${n || ''}</span><i style="height:${Math.round(85 * n / hmax)}%"></i><span class="x">${h % 3 === 0 ? h : ''}</span></div>`).join('');
 
-  // ---- 게임 ----
-  const tiles = [
-    ['방문', visits.length], ['방문자(기기 수)', uniq], ['게임 시작', starts.length], ['죽은 횟수', deaths.length],
-    ['평균 버틴 시간', Math.round(avg(deaths.map(d => d.data.time || 0))) + '초'],
-    ['평균 처치', avg(deaths.map(d => d.data.kills || 0)).toFixed(1)],
-    ['최고 처치', Math.max(0, ...deaths.map(d => d.data.kills || 0))],
-    ['최고 먹은 양', Math.max(0, ...deaths.map(d => d.data.maxMass || 0))],
-    ['직접 그린 무기로 시작', starts.length ? Math.round(100 * starts.filter(s => s.data.weaponUser).length / starts.length) + '%' : '-'],
-  ];
-  $('tiles').innerHTML = tiles.map(([l, n]) => `<div class="tile"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+  // 유입 경로
+  const refMap = {}; for (const v of visits) { const k = v.data.ref || '직접 입력 · 즐겨찾기 · 메신저'; refMap[k] = (refMap[k] || 0) + 1; }
+  hbars($('ref'), Object.entries(refMap).sort((a, b) => b[1] - a[1]).slice(0, 8), visits.length);
 
+  // 전환
+  const fbV = vids(inR.filter(r => r.type === 'feedback'));
+  const replay = vids(starts.filter(s => true)); // 시작한 사람
+  const multi = [...startedV].filter(v => starts.filter(s => s.vid === v).length >= 2).length;
+  hbars($('funnel'), [['들어옴', uv.size], ['게임 시작', startedV.size], ['두 판 이상', multi], ['한마디 남김', fbV.size]], uv.size);
+
+  // 한마디
   $('fbCount').textContent = `(${fbs.length}개, 전체 기간)`;
-  $('fbList').innerHTML = fbs.length ? fbs.map(f => `<div class="fb"><div class="meta">${fmt(f.created_at)} · ${esc(f.nick) || '익명'} · 처치 ${f.data.kills || 0} · 먹은 양 ${f.data.maxMass || 0}
-    <button class="danger" data-del="${f.id}">삭제</button></div><div class="msg">${esc(f.data.message)}</div></div>`).join('')
-    : '<p class="hint">아직 온 한마디가 없습니다.</p>';
+  $('fbList').innerHTML = fbs.length ? fbs.map(f => `<div class="fb"><div class="meta">${fmt(f.created_at)} · ${esc(f.nick) || '익명'} <button class="danger" data-del="${f.id}">삭제</button></div><div class="msg">${esc(f.data.message)}</div></div>`).join('') : '<p class="hint">아직 온 한마디가 없습니다.</p>';
   $('fbList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('이 한마디를 지울까요?')) return;
     const r = await api('/admin/events/' + b.dataset.del, { method: 'DELETE' });
     if (!r.ok) alert('삭제 실패'); else { rows = rows.filter(x => String(x.id) !== b.dataset.del); render(); }
   });
-
-  const byDay = {};
-  for (const r of inR) { const k = dayKey(r.created_at); byDay[k] = byDay[k] || { visit: 0, start: 0, death: 0, feedback: 0 }; byDay[k][r.type]++; }
-  const dk = Object.keys(byDay).slice(0, 60);
-  $('daily').innerHTML = tableHtml(['날짜', '방문', '시작', '죽음', '한마디'], dk.map(k => [k, byDay[k].visit, byDay[k].start, byDay[k].death, byDay[k].feedback]));
-
-  const wmap = {};
-  for (const d of deaths) { const k = d.data.weapon || '?'; const w = wmap[k] = wmap[k] || { n: 0, kills: [], time: [], thumb: d.data.weaponThumb, stat: d.data.weaponStat }; w.n++; w.kills.push(d.data.kills || 0); w.time.push(d.data.time || 0); }
-  const wl = Object.entries(wmap).sort((a, b) => b[1].n - a[1].n).slice(0, 20), wmax = wl.length ? wl[0][1].n : 1;
-  $('weapons').innerHTML = tableHtml(['무기', '판 수', '평균 처치', '평균 버팀', ''], wl.map(([k, w]) => [
-    `${w.thumb ? `<img class="w" src="${w.thumb}">` : ''}${esc(k)}<div class="hint">${esc(w.stat || '')}</div>`, w.n, avg(w.kills).toFixed(1), Math.round(avg(w.time)) + '초',
-    `<div class="bar" style="width:140px"><i style="width:${Math.round(100 * w.n / wmax)}%"></i></div>`]));
-
-  const kmap = {};
-  for (const d of deaths) { const k = d.data.killer || '(알 수 없음)'; kmap[k] = (kmap[k] || 0) + 1; }
-  const kl = Object.entries(kmap).sort((a, b) => b[1] - a[1]).slice(0, 15);
-  $('killers').innerHTML = tableHtml(['상대', '횟수'], kl.map(([k, n]) => [esc(k), n]));
-
-  $('runs').innerHTML = tableHtml(['시간', '닉네임', '무기', '처치', '먹은 양', '버틴 시간', '구슬(공/속/체/크)', '쓰러뜨린 상대'],
-    deaths.slice(0, 100).map(d => [fmt(d.created_at), esc(d.nick) || '익명', `${d.data.weaponThumb ? `<img class="w" src="${d.data.weaponThumb}">` : ''}${esc(d.data.weapon)}`,
-      d.data.kills || 0, d.data.maxMass || 0, (d.data.time || 0) + '초',
-      d.data.st ? `${d.data.st.atk}/${d.data.st.spd}/${d.data.st.hp}/${d.data.st.size}` : '', esc(d.data.killer)]));
 }
-
 api('/admin/me').then(r => { if (r.ok) load(); });
 </script>
 </body>
