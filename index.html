@@ -65,7 +65,7 @@ textarea{background:var(--pill)!important;color:var(--ink)!important;border:2px 
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="proto">쫌쫌따리 시험판 · 다른 99명은 컴퓨터</div>
+<div id="proto">쫌쫌따리 시험판 · 다른 399명은 컴퓨터</div>
 
 <!-- 시작 화면 -->
 <div class="overlay show" id="menu"><div class="box">
@@ -149,8 +149,8 @@ const CHAR_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABSUAAASqCAIAAAAg
 // ===== 기본 설정 (밸런스 숫자는 여기서 조절) =====
 const R0 = 24;            // 처음 몸 크기
 const MAP_R = 15600;      // 맵 반지름
-const MAX_PLAYERS = 100;  // 최대 인원
-const ORB_TARGET = 18000; // 맵에 깔린 알갱이 수
+const MAX_PLAYERS = 400;  // 최대 인원 (맵이 9배 넓어져서 100 → 400)
+const ORB_TARGET = 30000; // 맵에 깔린 알갱이 수
 const SPEED = 280;        // 이동 속도 (모두 같음)
 const DASH_MUL = 3.2;      // 대시 중 이동 속도 배율
 const DASH_DUR = 0.28;     // 대시 한 번의 길이(초)
