@@ -952,7 +952,7 @@ function render() {
     const dx = touch.cx - touch.sx, dy = touch.cy - touch.sy, l = Math.hypot(dx, dy), k = l > 34 ? 34 / l : 1;
     ctx.beginPath(); ctx.arc(touch.sx + dx * k, touch.sy + dy * k, 14, 0, 6.29); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fill();
   }
-  const top = NET ? net.top.map(([name, mass]) => ({ name, mass, isMe: !!me && name === me.name })) : ents.filter(e => e.alive).sort((a, b) => b.mass - a.mass).slice(0, 10).map(e => ({ name: e.name, mass: e.mass, isMe: e === me }));
+  const top = NET ? net.top.map(([name, mass], i) => ({ name, mass, isMe: !!me && me.alive && me.rank === i + 1 })) : ents.filter(e => e.alive).sort((a, b) => b.mass - a.mass).slice(0, 10).map(e => ({ name: e.name, mass: e.mass, isMe: e === me }));
   ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 1;
   ctx.textAlign = 'left'; ctx.font = "15px 'Jua','Malgun Gothic',sans-serif"; ctx.fillStyle = '#eee';
   ctx.fillText('순위', VW - 190, 28);
@@ -962,7 +962,7 @@ function render() {
   ctx.fillText(NET ? `접속 ${net.n}/${MAX_PLAYERS}` : `접속 ${ents.filter(e => e.alive).length}/${MAX_PLAYERS}`, 14, 26);
   if (me && me.alive) {
     ctx.font = "bold 20px 'Malgun Gothic',sans-serif"; ctx.fillStyle = '#fff';
-    ctx.fillText(`먹은 양 ${Math.round(me.mass)}   처치 ${me.kills}`, 14, VH - 34);
+    ctx.fillText(`먹은 양 ${Math.round(me.mass)}   처치 ${me.kills}` + (NET && me.rank ? `   ${me.rank}위` : ''), 14, VH - 34);
     let sx = 14; ctx.font = "bold 14px 'Malgun Gothic',sans-serif";
     for (const k of LIVE_KINDS) {
       ctx.fillStyle = KIND_COLOR[k]; ctx.beginPath(); ctx.arc(sx + 6, VH - 84, 6, 0, 6.29); ctx.fill();
@@ -1053,7 +1053,7 @@ function unpackSnap(buf) { // 서버 packSnap 과 같은 순서로 읽음
   m.n = u16();
   let n = u16(); while (n--) { const id = u16(), x = i16(), y = i16(), ang = i16() / 1000, r = u16() / 10, swingT = i16() / 1000, dir = i8(), rest = i16() / 1000, from = i16() / 1000, flags = u8(), mass = u16(), kills = u16(), charge = u8() / 100; m.ents.push([id, x, y, ang, r, swingT, dir, rest, from, flags & 1, mass, kills, (flags & 2) ? 1 : 0, charge]); }
   n = u16(); while (n--) m.gone.push(u16());
-  m.you = { stam: u8() / 100, st: { spd: u16(), size: u16() } };
+  m.you = { stam: u8() / 100, st: { spd: u16(), size: u16() }, rank: u16() };
   n = u16(); while (n--) m.orbAdd.push([u32(), i16(), i16(), u8(), u8()]);
   n = u16(); while (n--) m.orbDel.push(u32());
   n = u8(); while (n--) m.fx.push([u8(), i16(), i16(), u16(), u8()]);
@@ -1110,7 +1110,7 @@ function onSnap(m) {
     if (e.swingT < WINDUP && swingT >= WINDUP && e.weapon) fx.push({ type: 'sw', e, a0: ang - swingDir * e.weapon.half, a1: ang + swingDir * e.weapon.half, t: 0, T: 0.34, k: e.weapon.anim * Math.pow(scaleOf(e), GROW_HEAVY * 0.7) });
     e.swingT = swingT; e.swingDir = swingDir; e.restOff = restOff; e.swingFrom = swingFrom; e.boosting = !!boosting; e.mass = mass; e.kills = kills; e.safe = safe; e.charge = charge;
     if (mass > e.maxMass) e.maxMass = mass;
-    if (id === net.id) { me = e; e.baseWeapon = net.myWeapon || e.weapon; if (m.you) { e.stam = m.you.stam; Object.assign(e.st, m.you.st); } }
+    if (id === net.id) { me = e; e.baseWeapon = net.myWeapon || e.weapon; if (m.you) { e.stam = m.you.stam; Object.assign(e.st, m.you.st); e.rank = m.you.rank; } }
   }
   if (m.orbAdd) for (const [id, x, y, v, k] of m.orbAdd) { const kind = k ? 'size' : 'spd'; net.orbs.set(id, { id, x, y, v, kind, c: KIND_COLOR[kind], r: 2.5 + Math.sqrt(v) * 2.8, ph: rand(0, 6.28) }); }
   if (m.orbDel) for (const id of m.orbDel) net.orbs.delete(id);
